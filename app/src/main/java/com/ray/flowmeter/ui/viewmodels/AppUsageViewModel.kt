@@ -118,8 +118,7 @@ class AppUsageViewModel(
                 repository.resetTimeMinute,
                 repository.usageTimeFilter,
                 repository.monthlyResetDay,
-                repository.language
-            ) { h, m, f, r, lang -> Triple(h, m, f) to r }.collect { (triple, resetDay) ->
+            ) { h, m, f, r-> Triple(h, m, f) to r }.collect { (triple, resetDay) ->
                 val (resetHour, resetMinute, savedTime) = triple
                 monthlyResetDay = resetDay
                 val start: Long
@@ -630,33 +629,8 @@ class AppUsageViewModel(
 
         val finalSystemList = mutableListOf<AppUsageInfo>()
         finalSystemList.addAll(systemApps)
+        finalSystemList.addAll(systemProcesses)
 
-        if (systemProcesses.isNotEmpty()) {
-            val totalProcessUsage = systemProcesses.sumOf { it.totalUsage }
-            if (totalProcessUsage > 0) {
-                val systemIcon = try {
-                    val appInfo = packageManager.getApplicationInfo("android", 0)
-                    packageManager.getApplicationIcon(appInfo).toBitmap().asImageBitmap()
-                } catch (_: Exception) { null }
-
-                val processGroup = AppUsageInfo(
-                    packageName = "system_processes_group",
-                    appName = applicationContext.getString(R.string.label_system_processes),
-                    iconBitmap = systemIcon,
-                    totalUsage = totalProcessUsage,
-                    downUsage = systemProcesses.sumOf { it.downUsage },
-                    upUsage = systemProcesses.sumOf { it.upUsage },
-                    wifiUsage = systemProcesses.sumOf { it.wifiUsage },
-                    cellUsage = systemProcesses.sumOf { it.cellUsage },
-                    wifiDown = systemProcesses.sumOf { it.wifiDown },
-                    wifiUp = systemProcesses.sumOf { it.wifiUp },
-                    cellDown = systemProcesses.sumOf { it.cellDown },
-                    cellUp = systemProcesses.sumOf { it.cellUp },
-                    isSystemGroup = false,
-                )
-                finalSystemList.add(processGroup)
-            }
-        }
 
         _systemAppUsageList.value = finalSystemList
 
