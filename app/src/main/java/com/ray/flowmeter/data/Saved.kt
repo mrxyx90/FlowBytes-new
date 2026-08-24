@@ -76,6 +76,7 @@ data class AppLimit(
     val isWifiBlocked: Boolean = false,
     val isMobileBlocked: Boolean = false,
     val isEnabled: Boolean = true,
+    val isManuallyBlocked: Boolean = false,
 )
 
 @Dao

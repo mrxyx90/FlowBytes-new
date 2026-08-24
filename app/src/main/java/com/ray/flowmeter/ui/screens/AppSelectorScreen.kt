@@ -513,6 +513,11 @@ fun BatchConfigurationContent(
             selectedApps.forEach { this[it.packageName] = "MB" }
         }
     }
+    val appManuallyBlocked = remember(selectedApps) {
+        mutableStateMapOf<String, Boolean>().apply {
+            selectedApps.forEach { this[it.packageName] = false }
+        }
+    }
 
     val currentConfirmTrigger = remember {
         {
@@ -536,7 +541,8 @@ fun BatchConfigurationContent(
                     limitType = appLimType,
                     networkType = appNetType,
                     wifiDataLimit = if (appNetType == "both") wifiVal * wifiMult else if (appNetType == "wifi") singleVal * singleMult else 0L,
-                    mobileDataLimit = if (appNetType == "both") mobileVal * mobileMult else if (appNetType == "mobile") singleVal * singleMult else 0L
+                    mobileDataLimit = if (appNetType == "both") mobileVal * mobileMult else if (appNetType == "mobile") singleVal * singleMult else 0L,
+                    isManuallyBlocked = appManuallyBlocked[app.packageName] ?: false
                 )
             }
             onConfirm(limitsList)
@@ -782,6 +788,30 @@ fun BatchConfigurationContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        val isBlocked = appManuallyBlocked[app.packageName] ?: false
+                        FilledTonalButton(
+                            onClick = { appManuallyBlocked[app.packageName] = !isBlocked },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = if (isBlocked) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
+                                contentColor = if (isBlocked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isBlocked) Icons.Rounded.Block else Icons.Rounded.CheckCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isBlocked) "Blocked" else "Block Internet",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }

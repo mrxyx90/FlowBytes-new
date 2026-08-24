@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.google.devtools.ksp)
 }
 
-val appVersionName = "2.2.0"
+val appVersionName = "2.4.0"
 
 
 base {
@@ -23,7 +23,7 @@ android {
         applicationId = "com.ray.flowmeter"
         minSdk = 29
         targetSdk = 37
-        versionCode = 40
+        versionCode = 42
         versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -37,10 +37,13 @@ android {
                 keystoreProperties.load(FileInputStream(keystorePropertiesFile))
             }
 
-            storeFile = file(keystoreProperties.getProperty("RELEASE_STORE_FILE") ?: "")
-            storePassword = keystoreProperties.getProperty("RELEASE_STORE_PASSWORD") ?: ""
-            keyAlias = keystoreProperties.getProperty("RELEASE_KEY_ALIAS") ?: ""
-            keyPassword = keystoreProperties.getProperty("RELEASE_KEY_PASSWORD") ?: ""
+            val storeFilePath = keystoreProperties.getProperty("RELEASE_STORE_FILE")
+            if (storeFilePath != null && storeFilePath.isNotEmpty()) {
+                storeFile = file(storeFilePath)
+                storePassword = keystoreProperties.getProperty("RELEASE_STORE_PASSWORD")
+                keyAlias = keystoreProperties.getProperty("RELEASE_KEY_ALIAS")
+                keyPassword = keystoreProperties.getProperty("RELEASE_KEY_PASSWORD")
+            }
         }
     }
     buildTypes {

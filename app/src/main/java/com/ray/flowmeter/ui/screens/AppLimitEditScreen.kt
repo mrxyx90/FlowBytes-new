@@ -6,6 +6,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,6 +57,8 @@ fun AppLimitEditScreen(
     val (mobileLimitUnit, setMobileLimitUnit) = remember(limit) {
         mutableStateOf(if ((limit.mobileDataLimit >= 1024L * 1024L * 1024L) && (limit.mobileDataLimit % (1024L * 1024L * 1024L) == 0L)) "GB" else "MB")
     }
+    
+    var isManuallyBlocked by remember(limit) { mutableStateOf(limit.isManuallyBlocked) }
 
     val context = LocalContext.current
     val appIcon = remember(limit.packageName) {
@@ -103,9 +108,32 @@ fun AppLimitEditScreen(
                                 }
                             }
                             Spacer(modifier = Modifier.width(16.dp))
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(limit.appName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
                                 Text(limit.packageName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+
+                            FilledTonalButton(
+                                onClick = { isManuallyBlocked = !isManuallyBlocked },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = if (isManuallyBlocked) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
+                                    contentColor = if (isManuallyBlocked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp),
+                                modifier = Modifier.height(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isManuallyBlocked) Icons.Rounded.Block else Icons.Rounded.CheckCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (isManuallyBlocked) "Blocked" else "Block Internet",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     },
@@ -147,6 +175,7 @@ fun AppLimitEditScreen(
                                 isBlocked = false,
                                 isWifiBlocked = false,
                                 isMobileBlocked = false,
+                                isManuallyBlocked = isManuallyBlocked,
                             )
                         )
                     }

@@ -258,7 +258,7 @@ class AppBlockVpnService : VpnService() {
                         VpnBlockConfig(blockAll = true, blockedApps = emptyList())
                     } else {
                         val blockedApps = limits.filter { limit ->
-                            limit.isEnabled && when (limit.networkType) {
+                            limit.isManuallyBlocked || (limit.isEnabled && when (limit.networkType) {
                                 "wifi" -> limit.isBlocked && (networkType == NetworkCapabilities.TRANSPORT_WIFI)
                                 "mobile" -> limit.isBlocked && (networkType == NetworkCapabilities.TRANSPORT_CELLULAR)
                                 "both" -> {
@@ -266,7 +266,7 @@ class AppBlockVpnService : VpnService() {
                                     (limit.isMobileBlocked && (networkType == NetworkCapabilities.TRANSPORT_CELLULAR))
                                 }
                                 else -> limit.isBlocked
-                            }
+                            })
                         }.map { it.packageName }.toList()
                         VpnBlockConfig(blockAll = false, blockedApps = blockedApps)
                     }

@@ -95,7 +95,7 @@ fun AppLimitsScreen(
     val currentCustomWifiUsage by viewModel.currentCustomWifiUsage.collectAsState()
 
     val appLimits by viewModel.appLimits.collectAsState()
-    val appBlockingMasterEnabled by viewModel.appBlockingMasterEnabled.collectAsState()
+    // No longer used: val appBlockingMasterEnabled by viewModel.appBlockingMasterEnabled.collectAsState()
 
     val unconfiguredPlans = remember(dataDailyLimitConfigured, dataMonthlyLimitConfigured, wifiDailyLimitConfigured, wifiMonthlyLimitConfigured, dataCustomLimitConfigured, wifiCustomLimitConfigured) {
         buildList {
@@ -371,9 +371,9 @@ fun AppLimitsScreen(
                             AppLimitItem(
                                 limit = limit,
                                 onToggle = { enabled -> viewModel.updateAppLimit(limit.copy(isEnabled = enabled)) },
+                                onToggleManualBlock = { blocked -> viewModel.updateAppLimit(limit.copy(isManuallyBlocked = blocked)) },
                                 onDelete = { limitToDelete = limit },
-                                onEdit = { viewModel.editingLimit = limit },
-                                appBlockingMasterEnabled = appBlockingMasterEnabled
+                                onEdit = { viewModel.editingLimit = limit }
                             )
                         }
                     }
@@ -778,7 +778,7 @@ fun AppLimitsList(
     onAddLimitClick: () -> Unit
 ) {
     val appLimits by viewModel.appLimits.collectAsState()
-    val appBlockingMasterEnabled by viewModel.appBlockingMasterEnabled.collectAsState()
+    // No longer used: val appBlockingMasterEnabled by viewModel.appBlockingMasterEnabled.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (appLimits.isEmpty()) {
@@ -799,9 +799,9 @@ fun AppLimitsList(
                         AppLimitItem(
                             limit = limit,
                             onToggle = { enabled -> viewModel.updateAppLimit(limit.copy(isEnabled = enabled)) },
+                            onToggleManualBlock = { blocked -> viewModel.updateAppLimit(limit.copy(isManuallyBlocked = blocked)) },
                             onDelete = { onDelete(limit) },
-                            onEdit = { onEdit(limit) },
-                            appBlockingMasterEnabled = appBlockingMasterEnabled
+                            onEdit = { onEdit(limit) }
                         )
                     }
                 }
@@ -1035,9 +1035,9 @@ fun GeneralLimitItem(
 fun AppLimitItem(
     limit: AppLimit,
     onToggle: (Boolean) -> Unit,
+    onToggleManualBlock: (Boolean) -> Unit,
     onDelete: () -> Unit,
-    onEdit: () -> Unit,
-    appBlockingMasterEnabled: Boolean = false
+    onEdit: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -1057,7 +1057,6 @@ fun AppLimitItem(
 
     val isWifiOver = limit.isEnabled && limit.wifiDataLimit > 0 && limit.currentWifiUsage >= limit.wifiDataLimit
     val isMobileOver = limit.isEnabled && limit.mobileDataLimit > 0 && limit.currentMobileUsage >= limit.mobileDataLimit
-    val isBlocked = appBlockingMasterEnabled && limit.isEnabled && (limit.isBlocked || limit.isWifiBlocked || limit.isMobileBlocked)
 
     Card(
         modifier = Modifier
@@ -1066,14 +1065,20 @@ fun AppLimitItem(
             .bounceClick { expanded = !expanded },
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (limit.isEnabled) MaterialTheme.colorScheme.surfaceContainer
-                            else MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)
+            containerColor = when {
+                limit.isManuallyBlocked -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f)
+                limit.isEnabled -> MaterialTheme.colorScheme.surfaceContainer
+                else -> MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)
+            }
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = BorderStroke(
-            width = if (limit.isEnabled) 1.5.dp else 1.dp,
-            color = if (limit.isEnabled) MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+            width = if (limit.isEnabled || limit.isManuallyBlocked) 1.5.dp else 1.dp,
+            color = when {
+                limit.isManuallyBlocked -> MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                limit.isEnabled -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+            }
         )
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -1089,7 +1094,7 @@ fun AppLimitItem(
                             .size(44.dp)
                             .clip(RoundedCornerShape(12.dp)),
                         contentScale = ContentScale.Fit,
-                        alpha = if (limit.isEnabled) 1f else 0.5f,
+                        alpha = if (limit.isEnabled || limit.isManuallyBlocked) 1f else 0.5f,
                     )
                 } else {
                     Box(
@@ -1123,56 +1128,62 @@ fun AppLimitItem(
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            color = if (limit.isEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            color = if (limit.isEnabled || limit.isManuallyBlocked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                             modifier = Modifier.weight(1f, fill = false)
                         )
                     }
                     
-                    if (limit.isEnabled && (isWifiOver || isMobileOver || isBlocked)) {
+                    if (limit.isEnabled && (isWifiOver || isMobileOver)) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (isWifiOver || isMobileOver) {
-                                Box(
-                                    modifier = Modifier
-                                        .background(
-                                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
-                                            shape = RoundedCornerShape(6.dp)
-                                        )
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.badge_limit_reached),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
+                                        shape = RoundedCornerShape(6.dp)
                                     )
-                                }
-                            }
-                            if (isBlocked) {
-                                Box(
-                                    modifier = Modifier
-                                        .background(
-                                            color = MaterialTheme.colorScheme.error,
-                                            shape = RoundedCornerShape(6.dp)
-                                        )
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.badge_blocked),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onError
-                                    )
-                                }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.badge_limit_reached),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
                             }
                         }
                     }
                 }
 
                 Spacer(Modifier.width(8.dp))
+
+                FilledTonalButton(
+                    onClick = { onToggleManualBlock(!limit.isManuallyBlocked) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (limit.isManuallyBlocked) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
+                        contentColor = if (limit.isManuallyBlocked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Icon(
+                        imageVector = if (limit.isManuallyBlocked) Icons.Rounded.Block else Icons.Rounded.CheckCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (limit.isManuallyBlocked) "Blocked" else "Block Internet",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(Modifier.width(4.dp))
 
                 Switch(
                     checked = limit.isEnabled,
@@ -1187,7 +1198,7 @@ fun AppLimitItem(
                 )
             }
 
-            if (limit.isEnabled) {
+            if (limit.isEnabled && !limit.isManuallyBlocked) {
                 if ((limit.networkType == "both") || (limit.networkType == "wifi")) {
                     Spacer(modifier = Modifier.height(20.dp))
                     
