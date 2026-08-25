@@ -304,20 +304,17 @@ class NetworkMonitoringService : Service() {
 
     private fun startMonitoring() {
         if (monitorJob?.isActive == true) return
-        
+
         monitorJob = serviceScope.launch {
             while (isActive) {
-                if ((System.currentTimeMillis() - lastUsageQueryTime) > 5000) {
+                if (isScreenOn) {
                     updateDailyUsage()
                     checkAppLimits()
-                }
-
-                if (isScreenOn) {
                     updateStats()
+
                     delay(1000.milliseconds)
                 } else {
-                    // Slow down loop when screen is off to save battery
-                    delay(15000.milliseconds)
+                    delay(1000.milliseconds)
                 }
             }
         }
