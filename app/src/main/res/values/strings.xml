@@ -1,4 +1,4 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="app_name">FlowBytes</string>
 
     <!-- Screen Titles -->
@@ -60,6 +60,7 @@
     <string name="label_mobile_usage">Mobile</string>
     <string name="label_wifi_colon">Wi-Fi:</string>
     <string name="label_mobile_colon">Mobile:</string>
+    <string name="label_four_g_colon">4G:</string>
     <string name="label_system_apps">System apps</string>
     <string name="title_system_data_usage">System data usage</string>
     <string name="label_system_processes">System processes</string>
@@ -231,6 +232,8 @@
     <string name="desc_notifications">Required to show live speed in the status bar.</string>
     <string name="label_battery_optimization">Battery Optimization</string>
     <string name="desc_battery_optimization">Required to keep the speed monitor running in the background.</string>
+    <string name="label_phone_state">Phone State</string>
+    <string name="desc_phone_state">Required to accurately detect 4G/LTE connectivity for specialized tracking.</string>
     <string name="label_granted">Granted</string>
     <string name="btn_grant">Grant</string>
     <string name="title_traffic_settings">High Data Alert Settings</string>
@@ -416,7 +419,7 @@
     <string name="settings_check_updates_desc">Ensure your app is running the latest version</string>
     <string name="toast_app_up_to_date">FlowBytes is up to date!</string>
     <string name="toast_update_check_failed">Failed to check for updates. Please try again later.</string>
-    <string name="toast_checking_updates">Checking for updates...</string>
+    <string name="toast_checking_updates">Checking for updates&#8230;</string>
 
     <!-- Strings extracted from Kotlin files -->
     <string name="msg_usage_stats_permission_disabled">Usage stats permission disabled. Tap to grant.</string>

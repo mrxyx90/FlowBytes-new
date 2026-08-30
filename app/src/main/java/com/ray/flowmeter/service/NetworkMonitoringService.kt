@@ -30,6 +30,10 @@ import android.os.IBinder
 import android.os.Process
 import android.view.View
 import android.widget.RemoteViews
+import android.telephony.TelephonyManager
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.ray.flowmeter.MainActivity
 import com.ray.flowmeter.R
@@ -38,6 +42,8 @@ import com.ray.flowmeter.data.AppAlert
 import com.ray.flowmeter.data.AppLimit
 import com.ray.flowmeter.data.AppLimitRepository
 import com.ray.flowmeter.data.FlowMeterDatabase
+import com.ray.flowmeter.data.FourGSession
+import com.ray.flowmeter.data.FourGSessionRepository
 import com.ray.flowmeter.data.UserPreferencesRepository
 import com.ray.flowmeter.receiver.NetworkWakeupReceiver
 import com.ray.flowmeter.utils.SpeedFormatter
@@ -96,7 +102,14 @@ class NetworkMonitoringService : Service() {
     private var cachedMonthlyMobileUsage: Long = 0
     private var cachedCustomWifiUsage: Long = 0
     private var cachedCustomMobileUsage: Long = 0
+    private var cachedDailyFourGUsage: Long = 0
+    private var cachedMonthlyFourGUsage: Long = 0
     private var lastUsageQueryTime: Long = 0
+
+    private var lastSuccessful4GWrite: Long = 0
+    private val fourGRepository: FourGSessionRepository by lazy {
+        FourGSessionRepository(FlowMeterDatabase.getDatabase(applicationContext).fourGSessionDao())
+    }
 
     private var hasAlertedData = false
     private var hasAlertedWifi = false
@@ -241,6 +254,11 @@ class NetworkMonitoringService : Service() {
         serviceScope.launch { repository.trafficResetBelowThresholdTime.collect { trafficResetBelowThresholdTime = it } }
         serviceScope.launch { repository.trafficResetSpeed.collect { trafficResetSpeed = it } }
 
+        serviceScope.launch(Dispatchers.IO) {
+            val sixtyDaysAgo = System.currentTimeMillis() - (60L * 24 * 60 * 60 * 1000)
+            fourGRepository.deleteOldSessions(sixtyDaysAgo)
+        }
+
         // Initialize baseline immediately for instant first measurement
         lastRxBytes = TrafficStats.getTotalRxBytes()
         lastTxBytes = TrafficStats.getTotalTxBytes()
@@ -312,9 +330,12 @@ class NetworkMonitoringService : Service() {
                     checkAppLimits()
                     updateStats()
 
+                    trackFourGSession()
+
                     delay(1000.milliseconds)
                 } else {
-                    delay(1000.milliseconds)
+                    trackFourGSession()
+                    delay(2000.milliseconds)
                 }
             }
         }
@@ -425,6 +446,37 @@ class NetworkMonitoringService : Service() {
 
             cachedCustomMobileUsage = getCustomSumUsage(NetworkCapabilities.TRANSPORT_CELLULAR, dataCustomStart, dataCustomEnd)
             cachedCustomWifiUsage = getCustomSumUsage(NetworkCapabilities.TRANSPORT_WIFI, wifiCustomStart, wifiCustomEnd)
+
+            val startDaily = getStartTime("daily")
+            val startMonthly = getStartTime("monthly")
+
+            suspend fun getFourGUsage(start: Long, end: Long): Long {
+                val sessions = fourGRepository.getSessionsInRange(start, end)
+                var total = 0L
+                for (session in sessions) {
+                    if (session.closed) {
+                        if (session.startTime >= start && session.endTime <= end) {
+                            total += session.usageBytes
+                        } else {
+                            val s = maxOf(start, session.startTime)
+                            val e = minOf(end, session.endTime)
+                            if (e > s) {
+                                total += queryUsageForInterval(s, e)
+                            }
+                        }
+                    } else {
+                        val s = maxOf(start, session.startTime)
+                        val e = minOf(end, currentTime)
+                        if (e > s) {
+                            total += queryUsageForInterval(s, e)
+                        }
+                    }
+                }
+                return total
+            }
+
+            cachedDailyFourGUsage = getFourGUsage(startDaily, currentTime)
+            cachedMonthlyFourGUsage = getFourGUsage(startMonthly, currentTime)
 
             checkLimits()
             lastUsageQueryTime = System.currentTimeMillis()
@@ -641,6 +693,10 @@ class NetworkMonitoringService : Service() {
                         }
                         customLayout.setTextViewText(R.id.text_mobile_usage, formatDataUsage(cachedMobileUsage))
                         customLayout.setTextViewText(R.id.text_wifi_usage, formatDataUsage(cachedWifiUsage))
+
+                        customLayout.setViewVisibility(R.id.text_four_g_label, View.VISIBLE)
+                        customLayout.setViewVisibility(R.id.text_four_g_usage, View.VISIBLE)
+                        customLayout.setTextViewText(R.id.text_four_g_usage, formatDataUsage(cachedDailyFourGUsage))
                     } else {
                         customLayout.setViewVisibility(R.id.layout_speeds, View.GONE)
                         customLayout.setViewVisibility(R.id.layout_usage, View.GONE)
@@ -747,6 +803,10 @@ class NetworkMonitoringService : Service() {
                 }
                 customLayout.setTextViewText(R.id.text_mobile_usage, formatDataUsage(cachedMobileUsage))
                 customLayout.setTextViewText(R.id.text_wifi_usage, formatDataUsage(cachedWifiUsage))
+
+                customLayout.setViewVisibility(R.id.text_four_g_label, View.VISIBLE)
+                customLayout.setViewVisibility(R.id.text_four_g_usage, View.VISIBLE)
+                customLayout.setTextViewText(R.id.text_four_g_usage, formatDataUsage(cachedDailyFourGUsage))
             } else {
                 customLayout.setViewVisibility(R.id.layout_speeds, View.GONE)
                 customLayout.setViewVisibility(R.id.layout_usage, View.GONE)
@@ -1375,5 +1435,62 @@ class NetworkMonitoringService : Service() {
         } catch (e: Exception) {
             Log.e("NetworkMonitoringService", "NotificationManager.notify failed for id $id", e)
         }
+    }
+
+    private suspend fun trackFourGSession() = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val networkType = getMobileNetworkType()
+        val isCurrent4G = is4G(networkType)
+
+        val activeSession = fourGRepository.getActiveSession()
+
+        if (isCurrent4G) {
+            if (activeSession == null) {
+                fourGRepository.insert(FourGSession(startTime = now, endTime = now))
+                lastSuccessful4GWrite = now
+            } else {
+                if (now - lastSuccessful4GWrite <= 2000L) {
+                    fourGRepository.update(activeSession.copy(endTime = now))
+                    lastSuccessful4GWrite = now
+                } else {
+                    fourGRepository.update(activeSession.copy(closed = true, usageBytes = queryUsageForInterval(activeSession.startTime, activeSession.endTime)))
+                    fourGRepository.insert(FourGSession(startTime = now, endTime = now))
+                    lastSuccessful4GWrite = now
+                }
+            }
+        } else {
+            if (activeSession != null) {
+                fourGRepository.update(activeSession.copy(closed = true, usageBytes = queryUsageForInterval(activeSession.startTime, activeSession.endTime)))
+                lastSuccessful4GWrite = 0
+            }
+        }
+    }
+
+    private fun getMobileNetworkType(): Int {
+        val telephonyManager = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
+        return if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+            telephonyManager.dataNetworkType
+        } else {
+            TelephonyManager.NETWORK_TYPE_UNKNOWN
+        }
+    }
+
+    private fun is4G(networkType: Int): Boolean {
+        return networkType == TelephonyManager.NETWORK_TYPE_LTE
+    }
+
+    private fun queryUsageForInterval(startTime: Long, endTime: Long): Long {
+        val networkStatsManager = getSystemService(NetworkStatsManager::class.java)
+        var total = 0L
+        try {
+            val stats = networkStatsManager.querySummary(NetworkCapabilities.TRANSPORT_CELLULAR, null, startTime, endTime)
+            val bucket = NetworkStats.Bucket()
+            while (stats.hasNextBucket()) {
+                stats.getNextBucket(bucket)
+                total += bucket.rxBytes + bucket.txBytes
+            }
+            stats.close()
+        } catch (_: Exception) {}
+        return total
     }
 }

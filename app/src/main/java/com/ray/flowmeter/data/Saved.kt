@@ -79,6 +79,15 @@ data class AppLimit(
     val isManuallyBlocked: Boolean = false,
 )
 
+@Entity(tableName = "four_g_sessions")
+data class FourGSession(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val startTime: Long,
+    val endTime: Long,
+    val closed: Boolean = false,
+    val usageBytes: Long = 0L
+)
+
 @Dao
 interface AppLimitDao {
     @Query("SELECT * FROM app_limits")
@@ -100,10 +109,29 @@ interface AppLimitDao {
     suspend fun getAppLimit(packageName: String): AppLimit?
 }
 
-@Database(entities = [AppAlert::class, AppLimit::class], version = 7, exportSchema = false)
+@Dao
+interface FourGSessionDao {
+    @Insert
+    suspend fun insert(session: FourGSession): Long
+
+    @Update
+    suspend fun update(session: FourGSession)
+
+    @Query("SELECT * FROM four_g_sessions WHERE closed = 0 ORDER BY startTime DESC LIMIT 1")
+    suspend fun getActiveSession(): FourGSession?
+
+    @Query("SELECT * FROM four_g_sessions WHERE (startTime >= :start AND startTime < :end) OR (endTime > :start AND endTime <= :end) OR (startTime < :start AND endTime > :end)")
+    suspend fun getSessionsInRange(start: Long, end: Long): List<FourGSession>
+
+    @Query("DELETE FROM four_g_sessions WHERE startTime < :timestamp")
+    suspend fun deleteOldSessions(timestamp: Long)
+}
+
+@Database(entities = [AppAlert::class, AppLimit::class, FourGSession::class], version = 8, exportSchema = false)
 abstract class FlowMeterDatabase : RoomDatabase() {
     abstract fun appAlertDao(): AppAlertDao
     abstract fun appLimitDao(): AppLimitDao
+    abstract fun fourGSessionDao(): FourGSessionDao
 
     companion object {
         @Volatile
@@ -165,6 +193,14 @@ class AppLimitRepository(private val appLimitDao: AppLimitDao) {
     suspend fun getAllAppLimitsList(): List<AppLimit> {
         return appLimitDao.getAllAppLimitsList()
     }
+}
+
+class FourGSessionRepository(private val fourGSessionDao: FourGSessionDao) {
+    suspend fun insert(session: FourGSession): Long = fourGSessionDao.insert(session)
+    suspend fun update(session: FourGSession) = fourGSessionDao.update(session)
+    suspend fun getActiveSession(): FourGSession? = fourGSessionDao.getActiveSession()
+    suspend fun getSessionsInRange(start: Long, end: Long): List<FourGSession> = fourGSessionDao.getSessionsInRange(start, end)
+    suspend fun deleteOldSessions(timestamp: Long) = fourGSessionDao.deleteOldSessions(timestamp)
 }
 
 // --- User Preferences Storage (DataStore) ---

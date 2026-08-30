@@ -3,7 +3,6 @@
 package com.ray.flowmeter.ui.screens
 
 import android.annotation.SuppressLint
-import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -23,7 +22,6 @@ import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,7 +32,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -59,6 +56,8 @@ fun OnboardingScreen(
     } else {
         null
     }
+
+    val phoneStatePermissionState = rememberPermissionState(android.Manifest.permission.READ_PHONE_STATE)
 
     val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
     var isIgnoringBatteryOptimizations by remember {
@@ -90,7 +89,7 @@ fun OnboardingScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 24.dp, top = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Button(
                     onClick = onComplete,
@@ -222,6 +221,19 @@ fun OnboardingScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             StaggeredEntrance(index = 5) {
+                PermissionItem(
+                    title = stringResource(R.string.label_phone_state),
+                    description = stringResource(R.string.desc_phone_state),
+                    icon = Icons.Rounded.Info,
+                    isGranted = phoneStatePermissionState.status.isGranted
+                ) {
+                    phoneStatePermissionState.launchPermissionRequest()
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            StaggeredEntrance(index = 6) {
                 PermissionItem(
                     title = stringResource(R.string.label_battery_optimization),
                     description = stringResource(R.string.desc_battery_optimization),
