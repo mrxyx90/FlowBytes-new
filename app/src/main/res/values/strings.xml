@@ -35,6 +35,7 @@
     <string name="label_mobile">Mobile</string>
     <string name="label_wifi">Wi-Fi</string>
     <string name="label_combined">Combined</string>
+    <string name="label_four_g">4G</string>
     <string name="label_todays_usage">Today\'s usage</string>
     <string name="label_usage_summary">Usage Summary</string>
     <string name="msg_no_usage_recorded">No data usage recorded yet</string>
@@ -46,6 +47,7 @@
     <string name="filter_mobile_wifi">Mobile &amp; Wi-Fi</string>
     <string name="filter_mobile_only">Mobile Only</string>
     <string name="filter_wifi_only">Wi-Fi Only</string>
+    <string name="filter_four_g_only">4G Only</string>
     <string name="btn_ok">OK</string>
     <string name="btn_cancel">Cancel</string>
     <string name="btn_delete">Delete</string>

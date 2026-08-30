@@ -16,6 +16,8 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ray.flowmeter.R
+import com.ray.flowmeter.data.FlowMeterDatabase
+import com.ray.flowmeter.data.FourGSessionRepository
 import com.ray.flowmeter.data.UserPreferencesRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -44,6 +46,9 @@ data class AppUsageInfo(
     val wifiUp: Long,
     val cellDown: Long,
     val cellUp: Long,
+    val fourGUsage: Long = 0L,
+    val fourGDown: Long = 0L,
+    val fourGUp: Long = 0L,
     val isSystemGroup: Boolean = false,
 )
 
@@ -55,6 +60,10 @@ class AppUsageViewModel(
 
     private val _appUsageList = MutableStateFlow<List<AppUsageInfo>>(emptyList())
     private var monthlyResetDay = 1
+
+    private val fourGRepository: FourGSessionRepository by lazy {
+        FourGSessionRepository(FlowMeterDatabase.getDatabase(applicationContext).fourGSessionDao())
+    }
 
     private val _systemAppUsageList = MutableStateFlow<List<AppUsageInfo>>(emptyList())
 
@@ -84,12 +93,14 @@ class AppUsageViewModel(
             when (filter) {
                 "mobile" -> app.cellUsage > 0
                 "wifi" -> app.wifiUsage > 0
+                "four_g" -> app.fourGUsage > 0
                 else -> true
             }
         }.sortedByDescending { app ->
             when (filter) {
                 "mobile" -> app.cellUsage
                 "wifi" -> app.wifiUsage
+                "four_g" -> app.fourGUsage
                 else -> app.totalUsage
             }
         }.toList()
@@ -101,6 +112,8 @@ class AppUsageViewModel(
     var globalWifiUp by mutableLongStateOf(0L)
     var globalCellDown by mutableLongStateOf(0L)
     var globalCellUp by mutableLongStateOf(0L)
+    var globalFourGDown by mutableLongStateOf(0L)
+    var globalFourGUp by mutableLongStateOf(0L)
 
     var isLoading by mutableStateOf(false)
     var isRefreshing by mutableStateOf(false)
@@ -548,6 +561,8 @@ class AppUsageViewModel(
         val wifiUpMap = mutableMapOf<Int, Long>()
         val cellDownMap = mutableMapOf<Int, Long>()
         val cellUpMap = mutableMapOf<Int, Long>()
+        val fourGDownMap = mutableMapOf<Int, Long>()
+        val fourGUpMap = mutableMapOf<Int, Long>()
 
         coroutineScope {
             val wifiJob = async {
@@ -556,8 +571,19 @@ class AppUsageViewModel(
             val cellJob = async {
                 queryDetailedUsage(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, startTime, endTime, cellDownMap, cellUpMap)
             }
+            val fourGJob = async {
+                val sessions = fourGRepository.getSessionsInRange(startTime, endTime)
+                for (session in sessions) {
+                    val s = maxOf(startTime, session.startTime)
+                    val e = if (session.closed) minOf(endTime, session.endTime) else minOf(endTime, System.currentTimeMillis())
+                    if (e > s) {
+                        queryDetailedUsage(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, s, e, fourGDownMap, fourGUpMap)
+                    }
+                }
+            }
             wifiJob.await()
             cellJob.await()
+            fourGJob.await()
         }
 
         val allUids = (wifiDownMap.keys + wifiUpMap.keys + cellDownMap.keys + cellUpMap.keys).toSet()
@@ -588,12 +614,15 @@ class AppUsageViewModel(
             val wifiUp = wifiUpMap[uid] ?: 0L
             val cellDown = cellDownMap[uid] ?: 0L
             val cellUp = cellUpMap[uid] ?: 0L
+            val fourGDown = fourGDownMap[uid] ?: 0L
+            val fourGUp = fourGUpMap[uid] ?: 0L
 
             val totalDownForApp = wifiDown + cellDown
             val totalUpForApp = wifiUp + cellUp
 
             val totalWifi = wifiDown + wifiUp
             val totalCell = cellDown + cellUp
+            val totalFourG = fourGDown + fourGUp
             val absoluteTotal = totalWifi + totalCell
 
             if (absoluteTotal > 0) {
@@ -612,6 +641,9 @@ class AppUsageViewModel(
                     wifiUp = wifiUp,
                     cellDown = cellDown,
                     cellUp = cellUp,
+                    fourGUsage = totalFourG,
+                    fourGDown = fourGDown,
+                    fourGUp = fourGUp,
                     isSystemGroup = false,
                 )
                 
@@ -654,6 +686,9 @@ class AppUsageViewModel(
                 wifiUp = finalSystemList.sumOf { it.wifiUp },
                 cellDown = finalSystemList.sumOf { it.cellDown },
                 cellUp = finalSystemList.sumOf { it.cellUp },
+                fourGUsage = finalSystemList.sumOf { it.fourGUsage },
+                fourGDown = finalSystemList.sumOf { it.fourGDown },
+                fourGUp = finalSystemList.sumOf { it.fourGUp },
                 isSystemGroup = true,
             )
             userList.add(systemGroup)
@@ -663,12 +698,16 @@ class AppUsageViewModel(
         val sumWifiUp = wifiUpMap.values.sum()
         val sumCellDown = cellDownMap.values.sum()
         val sumCellUp = cellUpMap.values.sum()
+        val sumFourGDown = fourGDownMap.values.sum()
+        val sumFourGUp = fourGUpMap.values.sum()
 
         withContext(Dispatchers.Main) {
             globalWifiDown = sumWifiDown
             globalWifiUp = sumWifiUp
             globalCellDown = sumCellDown
             globalCellUp = sumCellUp
+            globalFourGDown = sumFourGDown
+            globalFourGUp = sumFourGUp
         }
 
         return@withContext userList
