@@ -464,6 +464,13 @@ class NetworkMonitoringService : Service() {
         return cm.activeNetwork != null
     }
 
+    private fun isWifiActive(): Boolean {
+        val cm = getSystemService(ConnectivityManager::class.java) ?: return false
+        val activeNetwork = cm.activeNetwork ?: return false
+        val capabilities = cm.getNetworkCapabilities(activeNetwork) ?: return false
+        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+    }
+
     private fun formatSpeed(bytesPerSec: Long): String {
         val unit = if (speedUnitStr == "BITS") com.ray.flowmeter.utils.SpeedUnit.BITS else com.ray.flowmeter.utils.SpeedUnit.BYTES
         return SpeedFormatter.formatBytes(bytesPerSec, unit)
@@ -1514,11 +1521,17 @@ class NetworkMonitoringService : Service() {
     private suspend fun trackFourGSession() = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val networkType = getMobileNetworkType()
-        val isCurrent4G = is4G(networkType)
+        val isWifi = isWifiActive()
+        
+        // It's only a "4G session" if we are on 4G AND NOT on Wi-Fi.
+        val isCurrent4G = is4G(networkType) && !isWifi
 
-        // Only close the session if we switched to another KNOWN mobile network (3G, 5G, etc.)
-        // Unknown usually means Flight Mode or No Signal - we don't close for those.
-        val isNon4GMobile = !isCurrent4G && networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN
+        // Close conditions:
+        // 1. We are on Wi-Fi.
+        // 2. We are on a known non-4G mobile network (3G, 5G, etc.)
+        // We EXCLUDE 'UNKNOWN' (Flight Mode / Signal Loss) to keep the session open (paused).
+        val shouldClose = activeFourGSession != null && 
+            (isWifi || (!isCurrent4G && networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN))
 
         // Optimization: If we are not on 4G and no session is active, just stop here.
         if (!isCurrent4G && activeFourGSession == null) {
@@ -1528,8 +1541,8 @@ class NetworkMonitoringService : Service() {
 
         isCurrentlyOn4G = isCurrent4G
 
-        // 1. Handle Network Switch (to 3G, 5G, etc.)
-        if (isNon4GMobile && activeFourGSession != null) {
+        // 1. Handle Network Switch (to 3G, 5G, Wi-Fi, etc.)
+        if (shouldClose) {
             val sessionToClose = activeFourGSession!!
             val (rx, tx) = queryUsagePairForInterval(sessionToClose.startTime, now)
             fourGRepository.update(sessionToClose.copy(
@@ -1620,6 +1633,8 @@ class NetworkMonitoringService : Service() {
             val callback = object : TelephonyCallback(), TelephonyCallback.DisplayInfoListener {
                 override fun onDisplayInfoChanged(displayInfo: TelephonyDisplayInfo) {
                     val ot = displayInfo.overrideNetworkType
+                    // Includes 5G, 5G+, 5G++, 5G Ultra Wideband, etc.
+                    // NR_ADVANCED covers the high-speed frequencies previously handled by mmWave.
                     isActually5G = ot == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA || 
                                    ot == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED
                 }
