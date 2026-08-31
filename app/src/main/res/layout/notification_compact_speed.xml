@@ -177,9 +177,9 @@
                 android:textSize="13sp"
                 android:layout_marginStart="4dp"/>
 
-            <!-- Separator -->
+            <!-- 4G Separator -->
             <TextView
-                android:id="@+id/text_four_g_separator"
+                android:id="@+id/text_4g_sep"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/label_separator"
@@ -189,9 +189,9 @@
                 android:layout_marginEnd="2dp"
                 android:visibility="gone" />
 
-            <!-- 4G badge -->
+            <!-- 4G Badge -->
             <TextView
-                android:id="@+id/text_4g_badge"
+                android:id="@+id/text_4g_icon"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/label_four_g"
