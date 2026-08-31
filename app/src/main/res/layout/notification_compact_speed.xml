@@ -176,24 +176,43 @@
                 android:textSize="13sp"
                 android:layout_marginStart="4dp"/>
 
+            <!-- Separator -->
             <TextView
-                android:id="@+id/text_four_g_label"
+                android:id="@+id/text_four_g_separator"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/label_four_g_colon"
+                android:text="|"
                 android:textColor="?android:attr/textColorSecondary"
                 android:textSize="13sp"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="4dp"
-                android:visibility="gone"/>
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="6dp"
+                android:visibility="gone" />
 
+            <!-- 4G badge -->
+            <TextView
+                android:id="@+id/text_4g_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="4G"
+                android:textColor="@android:color/white"
+                android:textSize="11sp"
+                android:gravity="center"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:background="@drawable/bg_4g_badge"
+                android:visibility="gone" />
+
+            <!-- 4G usage -->
             <TextView
                 android:id="@+id/text_four_g_usage"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="?android:attr/textColorPrimary"
                 android:textSize="13sp"
-                android:visibility="gone"/>
+                android:layout_marginStart="4dp"
+                android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

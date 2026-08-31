@@ -649,7 +649,8 @@ class NetworkMonitoringService : Service() {
                         customLayout.setTextViewText(R.id.text_mobile_usage, formatDataUsage(cachedMobileUsage))
                         customLayout.setTextViewText(R.id.text_wifi_usage, formatDataUsage(cachedWifiUsage))
 
-                        customLayout.setViewVisibility(R.id.text_four_g_label, View.VISIBLE)
+                        customLayout.setViewVisibility(R.id.text_four_g_separator, View.VISIBLE)
+                        customLayout.setViewVisibility(R.id.text_4g_badge, View.VISIBLE)
                         customLayout.setViewVisibility(R.id.text_four_g_usage, View.VISIBLE)
                         customLayout.setTextViewText(R.id.text_four_g_usage, formatDataUsage(cachedDailyFourGUsage))
                     } else {
@@ -759,7 +760,8 @@ class NetworkMonitoringService : Service() {
                 customLayout.setTextViewText(R.id.text_mobile_usage, formatDataUsage(cachedMobileUsage))
                 customLayout.setTextViewText(R.id.text_wifi_usage, formatDataUsage(cachedWifiUsage))
 
-                customLayout.setViewVisibility(R.id.text_four_g_label, View.VISIBLE)
+                customLayout.setViewVisibility(R.id.text_four_g_separator, View.VISIBLE)
+                customLayout.setViewVisibility(R.id.text_4g_badge, View.VISIBLE)
                 customLayout.setViewVisibility(R.id.text_four_g_usage, View.VISIBLE)
                 customLayout.setTextViewText(R.id.text_four_g_usage, formatDataUsage(cachedDailyFourGUsage))
             } else {
