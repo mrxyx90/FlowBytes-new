@@ -102,6 +102,10 @@ class NetworkMonitoringService : Service() {
     private var cachedMonthlyFourGUsage: Long = 0
     private var lastUsageQueryTime: Long = 0
     private var lastDailyResetStartTime: Long = 0
+    private var lastAppLimitCheckTime: Long = 0
+
+    private var isCurrentlyOn4G = false
+    private var needs4GRefresh = true
 
     private var activeFourGSession: FourGSession? = null
     private var lastFourGUpdateTask: Long = 0
@@ -266,19 +270,10 @@ class NetworkMonitoringService : Service() {
             val sixtyDaysAgo = System.currentTimeMillis() - (60L * 24 * 60 * 60 * 1000)
             fourGRepository.deleteOldSessions(sixtyDaysAgo)
             
-            // Close any open sessions from a previous run using their last heartbeat time
-            val stray = fourGRepository.getActiveSession()
-            if (stray != null) {
-                val (rx, tx) = queryUsagePairForInterval(stray.startTime, stray.endTime)
-                fourGRepository.update(stray.copy(
-                    closed = true,
-                    usageBytes = rx + tx,
-                    usageBytesDown = rx,
-                    usageBytesUp = tx,
-                ))
-            }
+            // Resume the last active session if it exists instead of closing it
+            activeFourGSession = fourGRepository.getActiveSession()
             
-            // Now check if we should start a new one based on current network
+            // Now check if we should continue it, close it, or start a new one based on current network
             withContext(Dispatchers.Main) {
                 trackFourGSession()
             }
@@ -357,18 +352,29 @@ class NetworkMonitoringService : Service() {
                 val loopStartTime = System.currentTimeMillis()
                 
                 if (isScreenOn) {
-                    // 1. Update speed UI immediately
+                    // 1. Update notification immediately for speed and cached data
                     updateStats()
 
-                    // 2. Run all heavy data tasks in parallel
-                    coroutineScope {
-                        launch { updateDailyUsage() }
-                        launch { checkAppLimits() }
-                        launch { trackFourGSession() }
+                    // 2. High-priority data refresh (Daily, Monthly, 4G)
+                    // We run this in a separate job so we can update the UI as soon as it's ready
+                    val dataJob = launch {
+                        updateDailyUsage()
+                        updateStats()
                     }
 
-                    // 3. Update notification again with fresh data
-                    updateStats()
+                    // 3. Low-priority tasks (Session tracking and App Limits)
+                    // We don't block the UI update for these.
+                    launch { trackFourGSession() }
+                    
+                    // Only check app limits every 30 seconds to avoid system-level lag
+                    if ((loopStartTime - lastAppLimitCheckTime) > 30000L) {
+                        launch { 
+                            checkAppLimits()
+                            lastAppLimitCheckTime = System.currentTimeMillis()
+                        }
+                    }
+
+                    dataJob.join() // Wait for main data to finish before starting next loop
 
                     val elapsed = System.currentTimeMillis() - loopStartTime
                     delay((1000L - elapsed).coerceAtLeast(0).milliseconds)
@@ -393,7 +399,8 @@ class NetworkMonitoringService : Service() {
         unregisterTelephonyListener()
         monitorJob?.cancel()
 
-        // Final attempt to save active session with latest usage
+        // Final heartbeat to save active session data without closing it, 
+        // allowing it to be resumed if 4G is still active on next start.
         activeFourGSession?.let { session ->
             val now = System.currentTimeMillis()
             kotlin.runCatching {
@@ -401,15 +408,13 @@ class NetworkMonitoringService : Service() {
                     val (rx, tx) = queryUsagePairForInterval(session.startTime, now)
                     fourGRepository.update(session.copy(
                         endTime = now,
-                        closed = true,
+                        closed = false,
                         usageBytes = rx + tx,
                         usageBytesDown = rx,
-                        usageBytesUp = tx
+                        usageBytesUp = tx,
                     ))
                 }
             }
-        } ?: runBlocking(Dispatchers.IO) {
-            fourGRepository.closeAllSessions()
         }
 
         serviceJob.cancel()
@@ -455,6 +460,9 @@ class NetworkMonitoringService : Service() {
                 NetworkStatsUtils.getDeviceTotalUsage(networkStatsManager, transportType, start, currentTime)
             }
 
+            val startDaily = NetworkStatsUtils.getStartTimeForPeriod("daily", currentTime, resetHour, resetMinute, monthlyResetDay)
+            val startMonthly = NetworkStatsUtils.getStartTimeForPeriod("monthly", currentTime, resetHour, resetMinute, monthlyResetDay)
+
             val wifiDailyDef = getSumUsageAsync(NetworkCapabilities.TRANSPORT_WIFI, "daily")
             val mobileDailyDef = getSumUsageAsync(NetworkCapabilities.TRANSPORT_CELLULAR, "daily")
             val wifiMonthlyDef = getSumUsageAsync(NetworkCapabilities.TRANSPORT_WIFI, "monthly")
@@ -474,34 +482,37 @@ class NetworkMonitoringService : Service() {
             val mobileCustomDef = getCustomUsageAsync(NetworkCapabilities.TRANSPORT_CELLULAR, dataCustomStart, dataCustomEnd)
             val wifiCustomDef = getCustomUsageAsync(NetworkCapabilities.TRANSPORT_WIFI, wifiCustomStart, wifiCustomEnd)
 
-            val startDaily = NetworkStatsUtils.getStartTimeForPeriod("daily", currentTime, resetHour, resetMinute, monthlyResetDay)
-            val startMonthly = NetworkStatsUtils.getStartTimeForPeriod("monthly", currentTime, resetHour, resetMinute, monthlyResetDay)
-
-            fun getFourGUsageAsync(start: Long, end: Long): Deferred<Long> = async(Dispatchers.IO) {
-                val sessions = fourGRepository.getSessionsInRange(start, end)
-                var total = 0L
-                for (session in sessions) {
-                    if (session.closed) {
-                        if ((session.startTime >= start) && (session.endTime <= end)) {
-                            total += session.usageBytes
-                        } else {
-                            val s = maxOf(start, session.startTime)
-                            val e = minOf(end, session.endTime)
-                            if (e > s) {
-                                total += queryUsageForInterval(s, e)
+            if (isCurrentlyOn4G || needs4GRefresh || (lastDailyResetStartTime != 0L && dailyStart != lastDailyResetStartTime)) {
+                fun getFourGUsageAsync(start: Long, end: Long): Deferred<Long> = async(Dispatchers.IO) {
+                    val sessions = fourGRepository.getSessionsInRange(start, end)
+                    var total = 0L
+                    for (session in sessions) {
+                        if (session.closed) {
+                            if ((session.startTime >= start) && (session.endTime <= end)) {
+                                total += session.usageBytes
+                            } else {
+                                val s = maxOf(start, session.startTime)
+                                val e = minOf(end, session.endTime)
+                                if (e > s) {
+                                    total += queryUsageForInterval(s, e)
+                                }
                             }
+                        } else {
+                            // This is an active session (either in memory or left open in DB)
+                            val s = maxOf(start, session.startTime)
+                            total += queryUsageForInterval(s, currentTime)
                         }
-                    } else {
-                        // This is an active session (either in memory or left open in DB)
-                        val s = maxOf(start, session.startTime)
-                        total += queryUsageForInterval(s, currentTime)
                     }
+                    total
                 }
-                total
-            }
 
-            val fourGDailyDef = getFourGUsageAsync(startDaily, currentTime)
-            val fourGMonthlyDef = getFourGUsageAsync(startMonthly, currentTime)
+                val fourGDailyDef = getFourGUsageAsync(startDaily, currentTime)
+                val fourGMonthlyDef = getFourGUsageAsync(startMonthly, currentTime)
+                
+                cachedDailyFourGUsage = fourGDailyDef.await()
+                cachedMonthlyFourGUsage = fourGMonthlyDef.await()
+                needs4GRefresh = false
+            }
 
             cachedWifiUsage = wifiDailyDef.await()
             cachedMobileUsage = mobileDailyDef.await()
@@ -509,9 +520,7 @@ class NetworkMonitoringService : Service() {
             cachedMonthlyMobileUsage = mobileMonthlyDef.await()
             cachedCustomMobileUsage = mobileCustomDef.await()
             cachedCustomWifiUsage = wifiCustomDef.await()
-            cachedDailyFourGUsage = fourGDailyDef.await()
-            cachedMonthlyFourGUsage = fourGMonthlyDef.await()
-
+            
             checkLimits()
             lastUsageQueryTime = System.currentTimeMillis()
         } catch (e: Exception) {
@@ -954,7 +963,7 @@ class NetworkMonitoringService : Service() {
             this,
             0,
             notificationIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
         val activeChannelId = if (highPriority) "SPEED_METER_V7_HIGH" else "SPEED_METER_V7_DEFAULT"
@@ -1175,7 +1184,7 @@ class NetworkMonitoringService : Service() {
             this,
             requestCode,
             intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
         val contentText = getString(R.string.notification_high_usage_app_msg, trafficInfo.appName, formatSpeed(speed), formatDataUsage(trafficInfo.rxBytes + trafficInfo.txBytes))
@@ -1208,7 +1217,7 @@ class NetworkMonitoringService : Service() {
             this,
             trafficInfo.appName.hashCode(),
             ignoreIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
         builder.addAction(
@@ -1231,7 +1240,7 @@ class NetworkMonitoringService : Service() {
             this,
             SUMMARY_ID,
             intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
         val summary = NotificationCompat.Builder(this, CHANNEL_ALERTS)
@@ -1365,7 +1374,7 @@ class NetworkMonitoringService : Service() {
 
                             updatedLimit = updatedLimit.copy(
                                 isWifiBlocked = wifiOver,
-                                isMobileBlocked = mobileOver
+                                isMobileBlocked = mobileOver,
                             )
                             appLimitRepository.update(updatedLimit)
                         } else {
@@ -1430,7 +1439,7 @@ class NetworkMonitoringService : Service() {
             this,
             limit.packageName.hashCode(),
             intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ALERTS)
@@ -1462,34 +1471,44 @@ class NetworkMonitoringService : Service() {
         val networkType = getMobileNetworkType()
         val isCurrent4G = is4G(networkType)
 
+        // Optimization: If we are not on 4G and no session is active, just stop here.
+        if (!isCurrent4G && activeFourGSession == null) {
+            isCurrentlyOn4G = false
+            return@withContext
+        }
+
+        isCurrentlyOn4G = isCurrent4G
+
         // 1. Handle Disconnection or Network Switch
         if (!isCurrent4G && activeFourGSession != null) {
             val sessionToClose = activeFourGSession!!
             // For a live switch, use 'now' to capture the very last bits of 4G
             val (rx, tx) = queryUsagePairForInterval(sessionToClose.startTime, now)
             fourGRepository.update(sessionToClose.copy(
-                endTime = now, 
-                closed = true, 
+                endTime = now,
+                closed = true,
                 usageBytes = rx + tx,
                 usageBytesDown = rx,
-                usageBytesUp = tx
+                usageBytesUp = tx,
             ))
             activeFourGSession = null
+            needs4GRefresh = true // Trigger final UI refresh
             return@withContext
         }
 
         // 2. Handle New 4G Connection
-        if (isCurrent4G && activeFourGSession == null) {
+        if (activeFourGSession == null) {
             fourGRepository.closeAllSessions()
             val newSession = FourGSession(startTime = now, endTime = now)
             val id = fourGRepository.insert(newSession)
             activeFourGSession = newSession.copy(id = id.toInt())
             lastFourGUpdateTask = now
+            needs4GRefresh = true // Trigger immediate UI refresh
             return@withContext
         }
 
         // 3. Heartbeat for Active Session
-        if (isCurrent4G && activeFourGSession != null) {
+        if (activeFourGSession != null) {
             val session = activeFourGSession!!
             
             // Only update DB every 15s to save battery (or if screen is off, every 30s)
@@ -1501,7 +1520,7 @@ class NetworkMonitoringService : Service() {
                     endTime = now, 
                     usageBytes = rx + tx,
                     usageBytesDown = rx,
-                    usageBytesUp = tx
+                    usageBytesUp = tx,
                 )
                 fourGRepository.update(updatedSession)
                 activeFourGSession = updatedSession
@@ -1563,7 +1582,7 @@ class NetworkMonitoringService : Service() {
 
     private fun unregisterTelephonyListener() {
         val tm = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
-        val cb = telephonyCallback as? TelephonyCallback ?: return
+        val cb = (telephonyCallback as? TelephonyCallback) ?: return
         
         try {
             tm.unregisterTelephonyCallback(cb)
