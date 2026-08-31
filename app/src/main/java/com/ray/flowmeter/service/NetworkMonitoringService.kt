@@ -402,17 +402,19 @@ class NetworkMonitoringService : Service() {
         // Final heartbeat to save active session data without closing it, 
         // allowing it to be resumed if 4G is still active on next start.
         activeFourGSession?.let { session ->
-            val now = System.currentTimeMillis()
-            kotlin.runCatching {
-                runBlocking(Dispatchers.IO) {
-                    val (rx, tx) = queryUsagePairForInterval(session.startTime, now)
-                    fourGRepository.update(session.copy(
-                        endTime = now,
-                        closed = false,
-                        usageBytes = rx + tx,
-                        usageBytesDown = rx,
-                        usageBytesUp = tx,
-                    ))
+            if (isCurrentlyOn4G) { // Only update if we were actually on 4G
+                val now = System.currentTimeMillis()
+                kotlin.runCatching {
+                    runBlocking(Dispatchers.IO) {
+                        val (rx, tx) = queryUsagePairForInterval(session.startTime, now)
+                        fourGRepository.update(session.copy(
+                            endTime = now,
+                            closed = false,
+                            usageBytes = rx + tx,
+                            usageBytesDown = rx,
+                            usageBytesUp = tx,
+                        ))
+                    }
                 }
             }
         }
@@ -1482,6 +1484,10 @@ class NetworkMonitoringService : Service() {
         val networkType = getMobileNetworkType()
         val isCurrent4G = is4G(networkType)
 
+        // Only close the session if we switched to another KNOWN mobile network (3G, 5G, etc.)
+        // Unknown usually means Flight Mode or No Signal - we don't close for those.
+        val isNon4GMobile = !isCurrent4G && networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN
+
         // Optimization: If we are not on 4G and no session is active, just stop here.
         if (!isCurrent4G && activeFourGSession == null) {
             isCurrentlyOn4G = false
@@ -1490,10 +1496,9 @@ class NetworkMonitoringService : Service() {
 
         isCurrentlyOn4G = isCurrent4G
 
-        // 1. Handle Disconnection or Network Switch
-        if (!isCurrent4G && activeFourGSession != null) {
+        // 1. Handle Network Switch (to 3G, 5G, etc.)
+        if (isNon4GMobile && activeFourGSession != null) {
             val sessionToClose = activeFourGSession!!
-            // For a live switch, use 'now' to capture the very last bits of 4G
             val (rx, tx) = queryUsagePairForInterval(sessionToClose.startTime, now)
             fourGRepository.update(sessionToClose.copy(
                 endTime = now,
@@ -1508,7 +1513,7 @@ class NetworkMonitoringService : Service() {
         }
 
         // 2. Handle New 4G Connection
-        if (activeFourGSession == null) {
+        if (isCurrent4G && activeFourGSession == null) {
             fourGRepository.closeAllSessions()
             val newSession = FourGSession(startTime = now, endTime = now)
             val id = fourGRepository.insert(newSession)
@@ -1519,7 +1524,10 @@ class NetworkMonitoringService : Service() {
         }
 
         // 3. Heartbeat for Active Session
-        if (activeFourGSession != null) {
+        // Only update the database if we are currently on 4G.
+        // If we are in "Unknown" state (Flight mode), we keep the session in memory 
+        // but don't update its end time in DB until 4G returns or another network closes it.
+        if (isCurrent4G && activeFourGSession != null) {
             val session = activeFourGSession!!
             
             // Only update DB every 15s to save battery (or if screen is off, every 30s)
