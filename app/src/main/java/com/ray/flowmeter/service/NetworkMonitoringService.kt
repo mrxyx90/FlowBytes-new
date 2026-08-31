@@ -1527,11 +1527,10 @@ class NetworkMonitoringService : Service() {
         val isCurrent4G = is4G(networkType) && !isWifi
 
         // Close conditions:
-        // 1. We are on Wi-Fi.
-        // 2. We are on a known non-4G mobile network (3G, 5G, etc.)
-        // We EXCLUDE 'UNKNOWN' (Flight Mode / Signal Loss) to keep the session open (paused).
-        val shouldClose = activeFourGSession != null && 
-            (isWifi || (!isCurrent4G && networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN))
+        // ONLY 5G, 5G+, or 5G++ will close the session in the database.
+        // All other states (Wi-Fi, 3G, 2G, Flight Mode) will only pause tracking.
+        val is5G = (networkType == TelephonyManager.NETWORK_TYPE_NR) || isActually5G
+        val shouldClose = activeFourGSession != null && is5G
 
         // Optimization: If we are not on 4G and no session is active, just stop here.
         if (!isCurrent4G && activeFourGSession == null) {
@@ -1541,7 +1540,7 @@ class NetworkMonitoringService : Service() {
 
         isCurrentlyOn4G = isCurrent4G
 
-        // 1. Handle Network Switch (to 3G, 5G, Wi-Fi, etc.)
+        // 1. Handle Network Switch (to 5G, 5G+, etc.)
         if (shouldClose) {
             val sessionToClose = activeFourGSession!!
             val (rx, tx) = queryUsagePairForInterval(sessionToClose.startTime, now)
