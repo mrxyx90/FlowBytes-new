@@ -125,6 +125,9 @@ interface FourGSessionDao {
 
     @Query("DELETE FROM four_g_sessions WHERE startTime < :timestamp")
     suspend fun deleteOldSessions(timestamp: Long)
+
+    @Query("UPDATE four_g_sessions SET closed = 1 WHERE closed = 0")
+    suspend fun closeAllSessions()
 }
 
 @Database(entities = [AppAlert::class, AppLimit::class, FourGSession::class], version = 8, exportSchema = false)
@@ -201,6 +204,7 @@ class FourGSessionRepository(private val fourGSessionDao: FourGSessionDao) {
     suspend fun getActiveSession(): FourGSession? = fourGSessionDao.getActiveSession()
     suspend fun getSessionsInRange(start: Long, end: Long): List<FourGSession> = fourGSessionDao.getSessionsInRange(start, end)
     suspend fun deleteOldSessions(timestamp: Long) = fourGSessionDao.deleteOldSessions(timestamp)
+    suspend fun closeAllSessions() = fourGSessionDao.closeAllSessions()
 }
 
 // --- User Preferences Storage (DataStore) ---
