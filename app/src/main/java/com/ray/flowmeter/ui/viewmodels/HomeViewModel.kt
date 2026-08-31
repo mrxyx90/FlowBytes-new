@@ -283,11 +283,9 @@ class HomeViewModel(
         var txTotal = 0L
         
         fun sumTransportUsage(transportType: Int) {
-            try {
-                val bucket = manager.querySummaryForDevice(transportType, null, startTime, endTime)
-                rxTotal += bucket.rxBytes
-                txTotal += bucket.txBytes
-            } catch (_: Exception) {}
+            val (rx, tx) = NetworkStatsUtils.getDeviceTotalUsagePair(manager, transportType, startTime, endTime)
+            rxTotal += rx
+            txTotal += tx
         }
 
         sumTransportUsage(NetworkCapabilities.TRANSPORT_WIFI)
