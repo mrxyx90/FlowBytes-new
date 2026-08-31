@@ -106,12 +106,30 @@ class NetworkMonitoringService : Service() {
 
     private var isCurrentlyOn4G = false
     private var needs4GRefresh = true
+    private var isNetworkAvailable = false
 
     private var activeFourGSession: FourGSession? = null
     private var lastFourGUpdateTask: Long = 0
     
     private val fourGRepository: FourGSessionRepository by lazy {
         FourGSessionRepository(FlowMeterDatabase.getDatabase(applicationContext).fourGSessionDao())
+    }
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: android.net.Network) {
+            isNetworkAvailable = true
+            serviceScope.launch { startMonitoring() }
+        }
+
+        override fun onLost(network: android.net.Network) {
+            isNetworkAvailable = false
+            monitorJob?.cancel()
+            // Reset speeds to 0 immediately when connection is lost
+            currentRxSpeed = 0
+            currentTxSpeed = 0
+            currentTotalSpeed = 0
+            serviceScope.launch { updateStats(force = true) }
+        }
     }
 
     private var hasAlertedData = false
@@ -296,6 +314,13 @@ class NetworkMonitoringService : Service() {
         }
         registerReceiver(screenStateReceiver, filter)
         registerTelephonyListener()
+
+        val cm = getSystemService(ConnectivityManager::class.java)
+        val activeNet = cm.activeNetwork
+        val caps = cm.getNetworkCapabilities(activeNet)
+        isNetworkAvailable = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        
+        cm.registerDefaultNetworkCallback(networkCallback)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -345,6 +370,7 @@ class NetworkMonitoringService : Service() {
     }
 
     private fun startMonitoring() {
+        if (!isNetworkAvailable) return
         monitorJob?.cancel()
 
         monitorJob = serviceScope.launch {
@@ -397,6 +423,12 @@ class NetworkMonitoringService : Service() {
         super.onDestroy()
         isRunning = false
         unregisterTelephonyListener()
+        
+        val cm = getSystemService(ConnectivityManager::class.java)
+        try {
+            cm.unregisterNetworkCallback(networkCallback)
+        } catch (_: Exception) {}
+
         monitorJob?.cancel()
 
         // Final heartbeat to save active session data without closing it, 
