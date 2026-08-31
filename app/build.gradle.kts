@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId = "com.ray.flowmeter"
-        minSdk = 29
+        minSdk = 34
         targetSdk = 37
         versionCode = 42
         versionName = appVersionName

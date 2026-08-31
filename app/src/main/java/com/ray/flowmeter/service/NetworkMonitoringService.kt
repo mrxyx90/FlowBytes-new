@@ -26,7 +26,6 @@ import androidx.core.graphics.withScale
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.TrafficStats
-import android.os.Build
 import android.os.IBinder
 import android.os.Process
 import android.view.View
@@ -36,7 +35,6 @@ import android.telephony.TelephonyDisplayInfo
 import android.telephony.TelephonyCallback
 import android.Manifest
 import android.content.pm.PackageManager
-import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.ray.flowmeter.MainActivity
@@ -59,7 +57,6 @@ import kotlinx.coroutines.sync.withLock
 import java.util.Calendar
 import com.ray.flowmeter.utils.NetworkStatsUtils
 
-@Suppress("DEPRECATION")
 class NetworkMonitoringService : Service() {
 
     companion object {
@@ -75,7 +72,6 @@ class NetworkMonitoringService : Service() {
         @Volatile
         var isRunning = false
 
-        private const val CHANNEL_ACTIVE = "NetworkMonitoringActive"
         private const val CHANNEL_ALERTS = "NetworkUsageAlerts"
 
         private const val NOTIFICATION_ID = 1
@@ -832,15 +828,6 @@ class NetworkMonitoringService : Service() {
         val currentChannelId = if (highPriority) "SPEED_METER_V7_HIGH" else "SPEED_METER_V7_DEFAULT"
 
         try {
-            listOf(
-                CHANNEL_ACTIVE, "${CHANNEL_ACTIVE}_HIGH", "${CHANNEL_ACTIVE}_LOW",
-                "SPEED_METER_V2_HIGH", "SPEED_METER_V2_DEFAULT",
-                "SPEED_METER_V3_HIGH", "SPEED_METER_V3_DEFAULT",
-                "SPEED_METER_V4_HIGH", "SPEED_METER_V4_DEFAULT",
-                "SPEED_METER_V5_HIGH", "SPEED_METER_V5_DEFAULT",
-                "SPEED_METER_V6_HIGH", "SPEED_METER_V6_DEFAULT",
-            ).forEach { manager.deleteNotificationChannel(it) }
-
             val importance = if (highPriority) {
                 NotificationManager.IMPORTANCE_MAX
             } else {
@@ -943,9 +930,7 @@ class NetworkMonitoringService : Service() {
             builder.setSmallIcon(R.drawable.ic_launcher_foreground)
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            builder.foregroundServiceBehavior = NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE
-        }
+        builder.foregroundServiceBehavior = NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE
 
         return builder.build()
     }
@@ -958,11 +943,7 @@ class NetworkMonitoringService : Service() {
 
     private fun safeStartForeground(notification: Notification) {
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-            }
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } catch (e: Exception) {
             Log.e("NetworkMonitoringService", "safeStartForeground failed", e)
         }
@@ -1489,53 +1470,32 @@ class NetworkMonitoringService : Service() {
         }
     }
 
-    @Suppress("DEPRECATION")
     private fun registerTelephonyListener() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) return
         
         val tm = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
         
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val callback = object : TelephonyCallback(), TelephonyCallback.DisplayInfoListener {
-                    @RequiresApi(Build.VERSION_CODES.S)
-                    override fun onDisplayInfoChanged(displayInfo: TelephonyDisplayInfo) {
-                        val ot = displayInfo.overrideNetworkType
-                        isActually5G = ot == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA || 
-                                       ot == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED
-                    }
+            val callback = object : TelephonyCallback(), TelephonyCallback.DisplayInfoListener {
+                override fun onDisplayInfoChanged(displayInfo: TelephonyDisplayInfo) {
+                    val ot = displayInfo.overrideNetworkType
+                    isActually5G = ot == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA || 
+                                   ot == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED
                 }
-                tm.registerTelephonyCallback(mainExecutor, callback)
-                telephonyCallback = callback
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val listener = object : android.telephony.PhoneStateListener() {
-                    @Deprecated("Deprecated in Java")
-                    override fun onDisplayInfoChanged(displayInfo: TelephonyDisplayInfo) {
-                        val ot = displayInfo.overrideNetworkType
-                        // On API 30, NR_ADVANCED is not available, but NR_NSA and NR_NSA_MMWAVE are.
-                        // We check for NSA (3) and NSA_MMWAVE (4) which was the old way.
-                        isActually5G = ot == 3 || ot == 4
-                    }
-                }
-                tm.listen(listener, android.telephony.PhoneStateListener.LISTEN_DISPLAY_INFO_CHANGED)
-                telephonyCallback = listener
             }
+            tm.registerTelephonyCallback(mainExecutor, callback)
+            telephonyCallback = callback
         } catch (e: Exception) {
             Log.e("NetworkMonitoringService", "Failed to register telephony listener", e)
         }
     }
 
-    @Suppress("DEPRECATION")
     private fun unregisterTelephonyListener() {
         val tm = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
-        val cb = telephonyCallback ?: return
+        val cb = telephonyCallback as? TelephonyCallback ?: return
         
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                tm.unregisterTelephonyCallback(cb as TelephonyCallback)
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                tm.listen(cb as android.telephony.PhoneStateListener, android.telephony.PhoneStateListener.LISTEN_NONE)
-            }
+            tm.unregisterTelephonyCallback(cb)
         } catch (e: Exception) {
             Log.e("NetworkMonitoringService", "Failed to unregister telephony listener", e)
         }
