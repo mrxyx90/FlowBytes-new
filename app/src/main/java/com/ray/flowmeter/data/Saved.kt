@@ -122,7 +122,7 @@ interface FourGSessionDao {
     @Query("SELECT * FROM four_g_sessions WHERE closed = 0 ORDER BY startTime DESC LIMIT 1")
     suspend fun getActiveSession(): FourGSession?
 
-    @Query("SELECT * FROM four_g_sessions WHERE (startTime >= :start AND startTime < :end) OR (endTime > :start AND endTime <= :end) OR (startTime < :start AND endTime > :end)")
+    @Query("SELECT * FROM four_g_sessions WHERE (startTime < :end AND (endTime > :start OR closed = 0))")
     suspend fun getSessionsInRange(start: Long, end: Long): List<FourGSession>
 
     @Query("DELETE FROM four_g_sessions WHERE startTime < :timestamp")

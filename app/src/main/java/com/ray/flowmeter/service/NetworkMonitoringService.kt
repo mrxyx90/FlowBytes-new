@@ -449,6 +449,7 @@ class NetworkMonitoringService : Service() {
                 cachedWifiUsage = 0
                 cachedMobileUsage = 0
                 cachedDailyFourGUsage = 0
+                needs4GRefresh = true // Ensure 4G calculation runs immediately
                 withContext(Dispatchers.Main) {
                     updateStats(force = true)
                 }
@@ -484,7 +485,17 @@ class NetworkMonitoringService : Service() {
 
             if (isCurrentlyOn4G || needs4GRefresh || (lastDailyResetStartTime != 0L && dailyStart != lastDailyResetStartTime)) {
                 fun getFourGUsageAsync(start: Long, end: Long): Deferred<Long> = async(Dispatchers.IO) {
-                    val sessions = fourGRepository.getSessionsInRange(start, end)
+                    val sessions = fourGRepository.getSessionsInRange(start, end).toMutableList()
+
+                    // Add the in-memory active session if it's missing from the DB results.
+                    activeFourGSession?.let { active ->
+                        if (sessions.none { it.id == active.id }) {
+                            if (active.startTime < end) {
+                                sessions.add(active)
+                            }
+                        }
+                    }
+
                     var total = 0L
                     for (session in sessions) {
                         if (session.closed) {
