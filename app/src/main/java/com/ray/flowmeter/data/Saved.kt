@@ -85,7 +85,9 @@ data class FourGSession(
     val startTime: Long,
     val endTime: Long,
     val closed: Boolean = false,
-    val usageBytes: Long = 0L
+    val usageBytes: Long = 0L,
+    val usageBytesDown: Long = 0L,
+    val usageBytesUp: Long = 0L
 )
 
 @Dao
@@ -130,7 +132,7 @@ interface FourGSessionDao {
     suspend fun closeAllSessions()
 }
 
-@Database(entities = [AppAlert::class, AppLimit::class, FourGSession::class], version = 8, exportSchema = false)
+@Database(entities = [AppAlert::class, AppLimit::class, FourGSession::class], version = 9, exportSchema = false)
 abstract class FlowMeterDatabase : RoomDatabase() {
     abstract fun appAlertDao(): AppAlertDao
     abstract fun appLimitDao(): AppLimitDao

@@ -292,8 +292,8 @@ class AppUsageViewModel(
             }
 
             selectedDateString = if (
-                cal[Calendar.YEAR] == todayStart[Calendar.YEAR] &&
-                cal[Calendar.DAY_OF_YEAR] == todayStart[Calendar.DAY_OF_YEAR]
+                (cal[Calendar.YEAR] == todayStart[Calendar.YEAR]) &&
+                (cal[Calendar.DAY_OF_YEAR] == todayStart[Calendar.DAY_OF_YEAR])
             ) {
                 ""
             } else {
@@ -563,13 +563,25 @@ class AppUsageViewModel(
             }
             val fourGJob = async {
                 val sessions = fourGRepository.getSessionsInRange(startTime, endTime)
+                val now = System.currentTimeMillis()
                 for (session in sessions) {
                     val s = maxOf(startTime, session.startTime)
-                    val e = if (session.closed) minOf(endTime, session.endTime) else minOf(endTime, System.currentTimeMillis())
+                    val e = if (session.closed) {
+                        minOf(endTime, session.endTime)
+                    } else {
+                        // For an open session, query until 'now' to match the notification
+                        minOf(endTime, now)
+                    }
+                    
                     if (e > s) {
-                        val (rx, tx) = NetworkStatsUtils.getDeviceTotalUsagePair(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, s, e)
-                        sumFourGDown += rx
-                        sumFourGUp += tx
+                        if (session.closed && s == session.startTime && e == session.endTime) {
+                            sumFourGDown += session.usageBytesDown
+                            sumFourGUp += session.usageBytesUp
+                        } else {
+                            val (rx, tx) = NetworkStatsUtils.getDeviceTotalUsagePair(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, s, e)
+                            sumFourGDown += rx
+                            sumFourGUp += tx
+                        }
                         queryDetailedUsage(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, s, e, fourGDownMap, fourGUpMap)
                     }
                 }
