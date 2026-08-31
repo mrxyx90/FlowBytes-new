@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.google.devtools.ksp)
 }
 
-val appVersionName = "2.4.0"
+val appVersionName = "2.5.0"
 
 
 base {

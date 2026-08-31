@@ -1,6 +1,6 @@
 package com.ray.flowmeter.ui.viewmodels
 
-import android.app.usage.NetworkStats
+import com.ray.flowmeter.utils.NetworkStatsUtils
 import android.app.usage.NetworkStatsManager
 import android.content.Context
 import android.content.Intent
@@ -20,7 +20,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Calendar
 import android.graphics.drawable.Drawable
 import kotlin.time.Duration.Companion.milliseconds
 import java.util.concurrent.ConcurrentHashMap
@@ -185,64 +184,21 @@ class AppLimitsViewModel(
         wifiCustomEnd: Long
     ): DeviceUsage {
         val nsm = applicationContext.getSystemService(NetworkStatsManager::class.java)
-        val calendar = Calendar.getInstance()
         val endTime = System.currentTimeMillis()
 
         fun getStartTime(period: String): Long {
-            calendar.timeInMillis = endTime
-            if (period == "monthly") {
-                val clampedDay = monthlyResetDay.coerceAtMost(calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-                calendar[Calendar.DAY_OF_MONTH] = clampedDay
-            }
-            calendar[Calendar.HOUR_OF_DAY] = resetHour
-            calendar[Calendar.MINUTE] = resetMinute
-            calendar[Calendar.SECOND] = 0
-            calendar[Calendar.MILLISECOND] = 0
-
-            if (endTime < calendar.timeInMillis) {
-                if (period == "monthly") {
-                    calendar.add(Calendar.MONTH, -1)
-                    val prevMaxDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
-                    calendar[Calendar.DAY_OF_MONTH] = monthlyResetDay.coerceAtMost(prevMaxDay)
-                } else {
-                    calendar.add(Calendar.DAY_OF_YEAR, -1)
-                }
-            }
-            return calendar.timeInMillis
+            return NetworkStatsUtils.getStartTimeForPeriod(period, endTime, resetHour, resetMinute, monthlyResetDay)
         }
 
         fun sumUsage(transport: Int, period: String): Long {
             val start = getStartTime(period)
-            var total = 0L
-            try {
-                val stats = nsm.querySummary(transport, null, start, endTime)
-                val bucket = NetworkStats.Bucket()
-                while (stats.hasNextBucket()) {
-                    stats.getNextBucket(bucket)
-                    total += bucket.rxBytes + bucket.txBytes
-                }
-                stats.close()
-            } catch (_: Exception) {
-            }
-            return total
+            return NetworkStatsUtils.getDeviceTotalUsage(nsm, transport, start, endTime)
         }
 
         fun sumCustomUsage(transport: Int, start: Long, end: Long): Long {
-            var total = 0L
-            try {
-                val queryEnd = end.coerceAtMost(endTime)
-                val queryStart = start.coerceAtMost(queryEnd)
-                val stats = nsm.querySummary(transport, null, queryStart, queryEnd)
-                val bucket = NetworkStats.Bucket()
-                while (stats.hasNextBucket()) {
-                    stats.getNextBucket(bucket)
-                    total += bucket.rxBytes + bucket.txBytes
-                }
-                stats.close()
-            } catch (_: Exception) {
-                // ignore
-            }
-            return total
+            val queryEnd = end.coerceAtMost(endTime)
+            val queryStart = start.coerceAtMost(queryEnd)
+            return NetworkStatsUtils.getDeviceTotalUsage(nsm, transport, queryStart, queryEnd)
         }
 
         return DeviceUsage(
@@ -316,46 +272,6 @@ class AppLimitsViewModel(
                 icon
             } catch (_: Exception) {
                 null
-            }
-        }
-    }
-
-    fun addAppLimit(
-        packageName: String, 
-        appName: String, 
-        limitBytes: Long,
-        limitType: String = "daily",
-        networkType: String = "both",
-        wifiLimitBytes: Long = 0L,
-        mobileLimitBytes: Long = 0L,
-    ) {
-        viewModelScope.launch {
-            val existing = repository.getAppLimit(packageName)
-            if (existing == null) {
-                repository.insert(
-                    AppLimit(
-                        packageName = packageName,
-                        appName = appName,
-                        dataLimit = limitBytes,
-                        limitType = limitType,
-                        networkType = networkType,
-                        wifiDataLimit = wifiLimitBytes,
-                        mobileDataLimit = mobileLimitBytes,
-                    ),
-                )
-            } else {
-                repository.update(
-                    existing.copy(
-                        dataLimit = limitBytes,
-                        limitType = limitType,
-                        networkType = networkType,
-                        wifiDataLimit = wifiLimitBytes,
-                        mobileDataLimit = mobileLimitBytes,
-                        isBlocked = false,
-                        isWifiBlocked = false,
-                        isMobileBlocked = false,
-                    ),
-                )
             }
         }
     }

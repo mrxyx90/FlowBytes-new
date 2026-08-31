@@ -1,6 +1,7 @@
 package com.ray.flowmeter.ui.viewmodels
 
 import android.app.usage.NetworkStats
+import com.ray.flowmeter.utils.NetworkStatsUtils
 import android.app.usage.NetworkStatsManager
 import android.content.Context
 import android.content.pm.ApplicationInfo
@@ -140,23 +141,9 @@ class AppUsageViewModel(
 
                 when (savedTime) {
                     "month" -> {
-                        val cal = Calendar.getInstance()
-                        val clampedDay = monthlyResetDay.coerceAtMost(cal.getActualMaximum(Calendar.DAY_OF_MONTH))
-                        cal.set(Calendar.DAY_OF_MONTH, clampedDay)
-                        cal.set(Calendar.HOUR_OF_DAY, resetHour)
-                        cal.set(Calendar.MINUTE, resetMinute)
-                        cal.set(Calendar.SECOND, 0)
-                        cal.set(Calendar.MILLISECOND, 0)
-                        
-                        if (now < cal.timeInMillis) {
-                            cal.add(Calendar.MONTH, -1)
-                            val prevMaxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-                            cal.set(Calendar.DAY_OF_MONTH, monthlyResetDay.coerceAtMost(prevMaxDay))
-                        }
-                        
-                        start = cal.timeInMillis
+                        start = NetworkStatsUtils.getStartTimeForPeriod("monthly", now, resetHour, resetMinute, monthlyResetDay)
                         end = now
-                        currentViewDate = (cal.clone() as Calendar)
+                        currentViewDate = Calendar.getInstance().apply { timeInMillis = start }
                         selectedDateString = ""
                     }
                     "custom" -> {
@@ -173,19 +160,9 @@ class AppUsageViewModel(
                         selectedDateString = formatRange(start, rawEnd)
                     }
                     else -> {
-                        val cal = Calendar.getInstance()
-                        cal.set(Calendar.HOUR_OF_DAY, resetHour)
-                        cal.set(Calendar.MINUTE, resetMinute)
-                        cal.set(Calendar.SECOND, 0)
-                        cal.set(Calendar.MILLISECOND, 0)
-                        
-                        if (now < cal.timeInMillis) {
-                            cal.add(Calendar.DAY_OF_YEAR, -1)
-                        }
-                        
-                        start = cal.timeInMillis
+                        start = NetworkStatsUtils.getStartTimeForPeriod("daily", now, resetHour, resetMinute, monthlyResetDay)
                         end = now
-                        currentViewDate = (cal.clone() as Calendar)
+                        currentViewDate = Calendar.getInstance().apply { timeInMillis = start }
                         selectedDateString = ""
                     }
                 }
@@ -564,11 +541,24 @@ class AppUsageViewModel(
         val fourGDownMap = mutableMapOf<Int, Long>()
         val fourGUpMap = mutableMapOf<Int, Long>()
 
+        var sumWifiDown = 0L
+        var sumWifiUp = 0L
+        var sumCellDown = 0L
+        var sumCellUp = 0L
+        var sumFourGDown = 0L
+        var sumFourGUp = 0L
+
         coroutineScope {
             val wifiJob = async {
+                val (rx, tx) = NetworkStatsUtils.getDeviceTotalUsagePair(networkStatsManager, NetworkCapabilities.TRANSPORT_WIFI, startTime, endTime)
+                sumWifiDown = rx
+                sumWifiUp = tx
                 queryDetailedUsage(networkStatsManager, NetworkCapabilities.TRANSPORT_WIFI, startTime, endTime, wifiDownMap, wifiUpMap)
             }
             val cellJob = async {
+                val (rx, tx) = NetworkStatsUtils.getDeviceTotalUsagePair(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, startTime, endTime)
+                sumCellDown = rx
+                sumCellUp = tx
                 queryDetailedUsage(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, startTime, endTime, cellDownMap, cellUpMap)
             }
             val fourGJob = async {
@@ -577,6 +567,9 @@ class AppUsageViewModel(
                     val s = maxOf(startTime, session.startTime)
                     val e = if (session.closed) minOf(endTime, session.endTime) else minOf(endTime, System.currentTimeMillis())
                     if (e > s) {
+                        val (rx, tx) = NetworkStatsUtils.getDeviceTotalUsagePair(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, s, e)
+                        sumFourGDown += rx
+                        sumFourGUp += tx
                         queryDetailedUsage(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, s, e, fourGDownMap, fourGUpMap)
                     }
                 }
@@ -693,13 +686,6 @@ class AppUsageViewModel(
             )
             userList.add(systemGroup)
         }
-
-        val sumWifiDown = wifiDownMap.values.sum()
-        val sumWifiUp = wifiUpMap.values.sum()
-        val sumCellDown = cellDownMap.values.sum()
-        val sumCellUp = cellUpMap.values.sum()
-        val sumFourGDown = fourGDownMap.values.sum()
-        val sumFourGUp = fourGUpMap.values.sum()
 
         withContext(Dispatchers.Main) {
             globalWifiDown = sumWifiDown

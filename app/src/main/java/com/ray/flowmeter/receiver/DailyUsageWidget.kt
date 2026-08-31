@@ -16,15 +16,16 @@ import com.ray.flowmeter.data.UserPreferencesRepository
 import com.ray.flowmeter.utils.SpeedFormatter
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
-import android.app.usage.NetworkStats
+import com.ray.flowmeter.utils.NetworkStatsUtils
 import android.app.usage.NetworkStatsManager
 import android.net.NetworkCapabilities
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.RectF
-import java.util.Calendar
+import java.util.Locale
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.toColorInt
 
 // AppWidgetProvider that handles rendering and real-time updates of the home screen widget,
 // displaying cumulative daily network data usage.
@@ -301,69 +302,22 @@ object WidgetUsageQuerier {
     fun getUsageBytes(context: Context, transportType: Int, period: String, resetHour: Int, resetMinute: Int, monthlyResetDay: Int): Long {
         val manager = context.getSystemService(Context.NETWORK_STATS_SERVICE) as? NetworkStatsManager ?: return 0L
         val currentTime = System.currentTimeMillis()
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = currentTime
-        
-        if (period == "monthly") {
-            val clampedDay = monthlyResetDay.coerceAtMost(calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-            calendar[Calendar.DAY_OF_MONTH] = clampedDay
-        }
-        calendar[Calendar.HOUR_OF_DAY] = resetHour
-        calendar[Calendar.MINUTE] = resetMinute
-        calendar[Calendar.SECOND] = 0
-        calendar[Calendar.MILLISECOND] = 0
-
-        var startTime = calendar.timeInMillis
-        if (currentTime < startTime) {
-            if (period == "monthly") {
-                calendar.add(Calendar.MONTH, -1)
-                val prevMaxDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
-                calendar[Calendar.DAY_OF_MONTH] = monthlyResetDay.coerceAtMost(prevMaxDay)
-            } else {
-                calendar.add(Calendar.DAY_OF_YEAR, -1)
-            }
-            startTime = calendar.timeInMillis
-        }
-
-        var total = 0L
-        try {
-            val stats = manager.querySummary(transportType, null, startTime, currentTime)
-            val bucket = NetworkStats.Bucket()
-            while (stats.hasNextBucket()) {
-                stats.getNextBucket(bucket)
-                total += bucket.rxBytes + bucket.txBytes
-            }
-            stats.close()
-        } catch (_: Exception) {
-            // ignore
-        }
-        return total
+        val startTime = NetworkStatsUtils.getStartTimeForPeriod(period, currentTime, resetHour, resetMinute, monthlyResetDay)
+        return NetworkStatsUtils.getDeviceTotalUsage(manager, transportType, startTime, currentTime)
     }
 
     fun getCustomUsageBytes(context: Context, transportType: Int, startTime: Long, endTime: Long): Long {
         if (startTime <= 0L || endTime <= 0L || startTime >= endTime) return 0L
         val manager = context.getSystemService(Context.NETWORK_STATS_SERVICE) as? NetworkStatsManager ?: return 0L
-        var total = 0L
-        try {
-            val stats = manager.querySummary(transportType, null, startTime, endTime)
-            val bucket = NetworkStats.Bucket()
-            while (stats.hasNextBucket()) {
-                stats.getNextBucket(bucket)
-                total += bucket.rxBytes + bucket.txBytes
-            }
-            stats.close()
-        } catch (_: Exception) {
-            // ignore
-        }
-        return total
+        return NetworkStatsUtils.getDeviceTotalUsage(manager, transportType, startTime, endTime)
     }
 
     fun formatLimitValues(usage: Long, limit: Long): String {
         val gbUsage = usage / (1024.0 * 1024.0 * 1024.0)
         val gbLimit = limit / (1024.0 * 1024.0 * 1024.0)
         
-        val formattedUsage = if (gbUsage % 1.0 == 0.0) String.format("%.0f", gbUsage) else String.format("%.1f", gbUsage)
-        val formattedLimit = if (gbLimit % 1.0 == 0.0) String.format("%.0f", gbLimit) else String.format("%.1f", gbLimit)
+        val formattedUsage = if (gbUsage % 1.0 == 0.0) String.format(Locale.getDefault(), "%.0f", gbUsage) else String.format(Locale.getDefault(), "%.1f", gbUsage)
+        val formattedLimit = if (gbLimit % 1.0 == 0.0) String.format(Locale.getDefault(), "%.0f", gbLimit) else String.format(Locale.getDefault(), "%.1f", gbLimit)
         
         return "$formattedUsage / $formattedLimit GB"
     }
@@ -462,19 +416,19 @@ class TodayDataWidget : AppWidgetProvider() {
 
         private fun drawCircularProgress(usage: Long, limit: Long): Bitmap {
             val size = 200
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val bitmap = createBitmap(size, size, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             
             val strokeWidth = 14f
             
             val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = android.graphics.Color.parseColor("#1C2330")
+                color = "#1C2330".toColorInt()
                 style = Paint.Style.STROKE
                 this.strokeWidth = strokeWidth
             }
             
             val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = android.graphics.Color.parseColor("#00daf3")
+                color = "#00daf3".toColorInt()
                 style = Paint.Style.STROKE
                 this.strokeWidth = strokeWidth
                 strokeCap = Paint.Cap.ROUND

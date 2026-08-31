@@ -1,6 +1,6 @@
 package com.ray.flowmeter.ui.viewmodels
 
-import android.app.usage.NetworkStats
+import com.ray.flowmeter.utils.NetworkStatsUtils
 import android.app.usage.NetworkStatsManager
 import android.content.Context
 import android.net.NetworkCapabilities
@@ -275,17 +275,7 @@ class HomeViewModel(
 
     // Queries and sums total network usage bytes for a specific transport path.
     private fun getSumUsageForTransport(manager: NetworkStatsManager, transportType: Int, startTime: Long, endTime: Long): Long {
-        var total = 0L
-        try {
-            val stats = manager.querySummary(transportType, null, startTime, endTime)
-            val bucket = NetworkStats.Bucket()
-            while (stats.hasNextBucket()) {
-                stats.getNextBucket(bucket)
-                total += bucket.rxBytes + bucket.txBytes
-            }
-            stats.close()
-        } catch (_: Exception) {}
-        return total
+        return NetworkStatsUtils.getDeviceTotalUsage(manager, transportType, startTime, endTime)
     }
 
     private fun getDeviceUsage(manager: NetworkStatsManager, startTime: Long, endTime: Long): LongArray {
@@ -294,14 +284,9 @@ class HomeViewModel(
         
         fun sumTransportUsage(transportType: Int) {
             try {
-                val stats = manager.querySummary(transportType, null, startTime, endTime)
-                val bucket = NetworkStats.Bucket()
-                while (stats.hasNextBucket()) {
-                    stats.getNextBucket(bucket)
-                    rxTotal += bucket.rxBytes
-                    txTotal += bucket.txBytes
-                }
-                stats.close()
+                val bucket = manager.querySummaryForDevice(transportType, null, startTime, endTime)
+                rxTotal += bucket.rxBytes
+                txTotal += bucket.txBytes
             } catch (_: Exception) {}
         }
 

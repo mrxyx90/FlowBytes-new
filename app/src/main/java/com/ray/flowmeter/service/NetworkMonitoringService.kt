@@ -59,6 +59,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.Calendar
+import com.ray.flowmeter.utils.NetworkStatsUtils
 
 class NetworkMonitoringService : Service() {
 
@@ -334,8 +335,9 @@ class NetworkMonitoringService : Service() {
 
                     delay(1000.milliseconds)
                 } else {
+                    updateDailyUsage()
                     trackFourGSession()
-                    delay(2000.milliseconds)
+                    delay(5000.milliseconds)
                 }
             }
         }
@@ -370,50 +372,15 @@ class NetworkMonitoringService : Service() {
     private suspend fun updateDailyUsage() = withContext(Dispatchers.IO) {
         try {
             val networkStatsManager = getSystemService(NetworkStatsManager::class.java)
-            val calendar = Calendar.getInstance()
             val currentTime = System.currentTimeMillis()
 
             fun getStartTime(period: String): Long {
-                calendar.timeInMillis = currentTime
-                if (period == "monthly") {
-                    val clampedDay = monthlyResetDay.coerceAtMost(calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-                    calendar[Calendar.DAY_OF_MONTH] = clampedDay
-                }
-                calendar[Calendar.HOUR_OF_DAY] = resetHour
-                calendar[Calendar.MINUTE] = resetMinute
-                calendar[Calendar.SECOND] = 0
-                calendar[Calendar.MILLISECOND] = 0
-
-                var startTime = calendar.timeInMillis
-
-                if (currentTime < startTime) {
-                    if (period == "monthly") {
-                        calendar.add(Calendar.MONTH, -1)
-                        val prevMaxDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
-                        calendar[Calendar.DAY_OF_MONTH] = monthlyResetDay.coerceAtMost(prevMaxDay)
-                    } else {
-                        calendar.add(Calendar.DAY_OF_YEAR, -1)
-                    }
-                    startTime = calendar.timeInMillis
-                }
-                return startTime
+                return NetworkStatsUtils.getStartTimeForPeriod(period, currentTime, resetHour, resetMinute, monthlyResetDay)
             }
 
             fun getSumUsage(transportType: Int, period: String): Long {
-                var total = 0L
                 val start = getStartTime(period)
-                try {
-                    val stats = networkStatsManager.querySummary(transportType, null, start, currentTime)
-                    val bucket = NetworkStats.Bucket()
-                    while (stats.hasNextBucket()) {
-                        stats.getNextBucket(bucket)
-                        total += bucket.rxBytes + bucket.txBytes
-                    }
-                    stats.close()
-                } catch (_: Exception) {
-                    // ignore
-                }
-                return total
+                return NetworkStatsUtils.getDeviceTotalUsage(networkStatsManager, transportType, start, currentTime)
             }
 
             cachedWifiUsage = getSumUsage(NetworkCapabilities.TRANSPORT_WIFI, "daily")
@@ -427,21 +394,9 @@ class NetworkMonitoringService : Service() {
             val wifiCustomEnd = repository.wifiCustomLimitEnd.first()
 
             fun getCustomSumUsage(transportType: Int, start: Long, end: Long): Long {
-                var total = 0L
-                try {
-                    val queryEnd = end.coerceAtMost(currentTime)
-                    val queryStart = start.coerceAtMost(queryEnd)
-                    val stats = networkStatsManager.querySummary(transportType, null, queryStart, queryEnd)
-                    val bucket = NetworkStats.Bucket()
-                    while (stats.hasNextBucket()) {
-                        stats.getNextBucket(bucket)
-                        total += bucket.rxBytes + bucket.txBytes
-                    }
-                    stats.close()
-                } catch (_: Exception) {
-                    // ignore
-                }
-                return total
+                val queryEnd = end.coerceAtMost(currentTime)
+                val queryStart = start.coerceAtMost(queryEnd)
+                return NetworkStatsUtils.getDeviceTotalUsage(networkStatsManager, transportType, queryStart, queryEnd)
             }
 
             cachedCustomMobileUsage = getCustomSumUsage(NetworkCapabilities.TRANSPORT_CELLULAR, dataCustomStart, dataCustomEnd)
@@ -1449,14 +1404,10 @@ class NetworkMonitoringService : Service() {
                 fourGRepository.insert(FourGSession(startTime = now, endTime = now))
                 lastSuccessful4GWrite = now
             } else {
-                if (now - lastSuccessful4GWrite <= 2000L) {
-                    fourGRepository.update(activeSession.copy(endTime = now))
-                    lastSuccessful4GWrite = now
-                } else {
-                    fourGRepository.update(activeSession.copy(closed = true, usageBytes = queryUsageForInterval(activeSession.startTime, activeSession.endTime)))
-                    fourGRepository.insert(FourGSession(startTime = now, endTime = now))
-                    lastSuccessful4GWrite = now
-                }
+                // If session is already active, just update its endTime and usage
+                val updatedUsage = queryUsageForInterval(activeSession.startTime, now)
+                fourGRepository.update(activeSession.copy(endTime = now, usageBytes = updatedUsage))
+                lastSuccessful4GWrite = now
             }
         } else {
             if (activeSession != null) {
@@ -1481,16 +1432,6 @@ class NetworkMonitoringService : Service() {
 
     private fun queryUsageForInterval(startTime: Long, endTime: Long): Long {
         val networkStatsManager = getSystemService(NetworkStatsManager::class.java)
-        var total = 0L
-        try {
-            val stats = networkStatsManager.querySummary(NetworkCapabilities.TRANSPORT_CELLULAR, null, startTime, endTime)
-            val bucket = NetworkStats.Bucket()
-            while (stats.hasNextBucket()) {
-                stats.getNextBucket(bucket)
-                total += bucket.rxBytes + bucket.txBytes
-            }
-            stats.close()
-        } catch (_: Exception) {}
-        return total
+        return NetworkStatsUtils.getDeviceTotalUsage(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, startTime, endTime)
     }
 }

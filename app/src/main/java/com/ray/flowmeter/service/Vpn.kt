@@ -11,7 +11,6 @@ import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import com.ray.flowmeter.data.AppLimit
 import com.ray.flowmeter.data.AppLimitRepository
 import com.ray.flowmeter.data.FlowMeterDatabase
 import com.ray.flowmeter.data.UserPreferencesRepository
@@ -23,9 +22,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
-import android.app.usage.NetworkStats
+import com.ray.flowmeter.utils.NetworkStatsUtils
 import android.app.usage.NetworkStatsManager
-import java.util.Calendar
+import kotlin.time.Duration.Companion.milliseconds
 
 // VPN Service that intercepts and blocks network traffic for applications
 // that have exceeded their configured cellular or Wi-Fi data usage limits.
@@ -115,7 +114,7 @@ class AppBlockVpnService : VpnService() {
     private suspend fun isSystemPlanLimitExceeded(networkType: Int?): Boolean {
         if (networkType == null) return false
         
-        val networkStatsManager = getSystemService(Context.NETWORK_STATS_SERVICE) as? NetworkStatsManager ?: return false
+        val networkStatsManager = getSystemService(NETWORK_STATS_SERVICE) as? NetworkStatsManager ?: return false
         
         val resetHour = userPrefs.resetTimeHour.first()
         val resetMinute = userPrefs.resetTimeMinute.first()
@@ -124,63 +123,18 @@ class AppBlockVpnService : VpnService() {
         val currentTime = System.currentTimeMillis()
         
         fun getStartTime(period: String): Long {
-            val calendar = Calendar.getInstance()
-            calendar[Calendar.HOUR_OF_DAY] = resetHour
-            calendar[Calendar.MINUTE] = resetMinute
-            calendar[Calendar.SECOND] = 0
-            calendar[Calendar.MILLISECOND] = 0
-
-            val timeNow = System.currentTimeMillis()
-
-            if (period == "monthly") {
-                val maxDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
-                calendar[Calendar.DAY_OF_MONTH] = monthlyResetDay.coerceAtMost(maxDay)
-            }
-
-            var startTime = calendar.timeInMillis
-
-            if (timeNow < startTime) {
-                if (period == "monthly") {
-                    calendar.add(Calendar.MONTH, -1)
-                    val prevMaxDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
-                    calendar[Calendar.DAY_OF_MONTH] = monthlyResetDay.coerceAtMost(prevMaxDay)
-                } else {
-                    calendar.add(Calendar.DAY_OF_YEAR, -1)
-                }
-                startTime = calendar.timeInMillis
-            }
-            return startTime
+            return NetworkStatsUtils.getStartTimeForPeriod(period, currentTime, resetHour, resetMinute, monthlyResetDay)
         }
 
         fun getSumUsage(transportType: Int, period: String): Long {
-            var total = 0L
             val start = getStartTime(period)
-            try {
-                val stats = networkStatsManager.querySummary(transportType, null, start, currentTime)
-                val bucket = NetworkStats.Bucket()
-                while (stats.hasNextBucket()) {
-                    stats.getNextBucket(bucket)
-                    total += bucket.rxBytes + bucket.txBytes
-                }
-                stats.close()
-            } catch (_: Exception) {}
-            return total
+            return NetworkStatsUtils.getDeviceTotalUsage(networkStatsManager, transportType, start, currentTime)
         }
 
         fun getCustomSumUsage(transportType: Int, start: Long, end: Long): Long {
-            var total = 0L
-            try {
-                val queryEnd = end.coerceAtMost(currentTime)
-                val queryStart = start.coerceAtMost(queryEnd)
-                val stats = networkStatsManager.querySummary(transportType, null, queryStart, queryEnd)
-                val bucket = NetworkStats.Bucket()
-                while (stats.hasNextBucket()) {
-                    stats.getNextBucket(bucket)
-                    total += bucket.rxBytes + bucket.txBytes
-                }
-                stats.close()
-            } catch (_: Exception) {}
-            return total
+            val queryEnd = end.coerceAtMost(currentTime)
+            val queryStart = start.coerceAtMost(queryEnd)
+            return NetworkStatsUtils.getDeviceTotalUsage(networkStatsManager, transportType, queryStart, queryEnd)
         }
 
         if (networkType == NetworkCapabilities.TRANSPORT_CELLULAR) {
@@ -240,7 +194,7 @@ class AppBlockVpnService : VpnService() {
         val tickerFlow = flow {
             while (currentCoroutineContext().isActive) {
                 emit(System.currentTimeMillis())
-                delay(5000)
+                delay(5000.milliseconds)
             }
         }
 
