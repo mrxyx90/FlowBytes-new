@@ -39,7 +39,6 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import com.ray.flowmeter.R
 import com.ray.flowmeter.data.UserPreferencesRepository
-import com.ray.flowmeter.ui.screens.WidgetsScreen
 import com.ray.flowmeter.ui.theme.StaggeredEntrance
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
@@ -107,7 +106,7 @@ fun MainScreen(
     var activeLayoutDestination by remember { mutableStateOf(initialDestination) }
     LaunchedEffect(currentDestination) {
         if (currentDestination == Destination.AppPicker || currentDestination == Destination.Widgets) {
-            delay(500)
+            delay(500.milliseconds)
             activeLayoutDestination = currentDestination
         } else {
             activeLayoutDestination = currentDestination
