@@ -222,7 +222,6 @@
     <string name="title_custom_color">Sesuaikan Warna</string>
     <string name="btn_apply">Terapkan</string>
     <string name="btn_get_started">Mulai</string>
-    <string name="btn_skip_for_now">Lewati untuk sekarang</string>
     <string name="title_welcome">Selamat Datang di FlowBytes</string>
     <string name="msg_onboarding_desc">Untuk memberikan pelacakan data yang akurat, kami memerlukan beberapa izin.</string>
     <string name="label_usage_access">Akses Penggunaan</string>

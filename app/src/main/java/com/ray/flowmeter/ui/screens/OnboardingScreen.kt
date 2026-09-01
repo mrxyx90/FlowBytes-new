@@ -75,8 +75,11 @@ fun OnboardingScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
-            // Get Started is locked until all three permissions are granted
-            val isEnabled = usageAccessGranted && (notificationPermissionState.status.isGranted) && isIgnoringBatteryOptimizations
+            // Get Started is locked until all required permissions are granted
+            val isEnabled = usageAccessGranted && 
+                           notificationPermissionState.status.isGranted && 
+                           phoneStatePermissionState.status.isGranted && 
+                           isIgnoringBatteryOptimizations
             val interactionSource = remember { MutableInteractionSource() }
             
             Column(
@@ -104,25 +107,6 @@ fun OnboardingScreen(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                }
-
-                if (!isEnabled) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    TextButton(
-                        onClick = onComplete,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .bounceClick(),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.btn_skip_for_now),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
                 }
             }
         }

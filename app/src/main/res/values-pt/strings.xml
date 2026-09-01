@@ -402,7 +402,6 @@
     <string name="toast_checking_updates">Verificando atualizações...</string>
     <string name="snackbar_support_prompt">Gostando do FlowBytes? Apoie nosso desenvolvimento sem anúncios!</string>
     <string name="snackbar_support_action">Apoiar</string>
-    <string name="btn_skip_for_now">Pular por enquanto</string>
     <string name="title_custom_limit_widget">Widget de limite de rede personalizado</string>
     <string name="label_custom_limit_caps">LIMITE DE REDE PERSONALIZADO</string>
     <string name="msg_usage_stats_permission_disabled">Permissão de estatísticas de uso desativada. Toque para conceder.</string>

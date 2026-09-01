@@ -222,7 +222,6 @@
     <string name="title_custom_color">Налаштувати колір</string>
     <string name="btn_apply">Застосувати</string>
     <string name="btn_get_started">Розпочати</string>
-    <string name="btn_skip_for_now">Пропустити зараз</string>
     <string name="title_welcome">Ласкаво просимо до FlowBytes</string>
     <string name="msg_onboarding_desc">Для точного відстеження трафіку програмі потрібні деякі дозволи.</string>
     <string name="label_usage_access">Доступ до використання</string>

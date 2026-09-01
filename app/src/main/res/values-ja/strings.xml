@@ -402,7 +402,6 @@
     <string name="toast_checking_updates">アップデートを確認中...</string>
     <string name="snackbar_support_prompt">FlowBytesをお楽しみいただけていますか？広告なしの開発を支援してください！</string>
     <string name="snackbar_support_action">支援する</string>
-    <string name="btn_skip_for_now">今はスキップ</string>
     <string name="title_custom_limit_widget">カスタムネットワーク制限ウィジェット</string>
     <string name="label_custom_limit_caps">カスタムネットワーク制限</string>
     <string name="msg_usage_stats_permission_disabled">使用状況へのアクセス権限が無効です。タップして許可してください。</string>

@@ -40,7 +40,6 @@ import com.google.android.play.core.appupdate.AppUpdateOptions
 import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
-import com.google.android.play.core.review.ReviewManagerFactory
 import com.ray.flowmeter.data.AlertRepository
 import com.ray.flowmeter.data.AppLimitRepository
 import com.ray.flowmeter.data.FlowMeterDatabase
@@ -86,7 +85,7 @@ class MainActivity : ComponentActivity() {
         Toast.makeText(
             this,
             "An update has been downloaded. Restarting app in 3 seconds to complete install...",
-            Toast.LENGTH_LONG
+            Toast.LENGTH_LONG,
         ).show()
         lifecycleScope.launch {
             delay(3000.milliseconds)
@@ -104,7 +103,7 @@ class MainActivity : ComponentActivity() {
             // Revert the setting if permission was denied by the user.
             val repository = UserPreferencesRepository(applicationContext)
             kotlinx.coroutines.MainScope().launch {
-                repository.setAppBlockingMasterEnabled(false)
+                repository.setAppBlockingMasterEnabled(enabled = false)
             }
         }
     }
@@ -162,10 +161,6 @@ class MainActivity : ComponentActivity() {
         val alertRepository = AlertRepository(database.appAlertDao())
         val appLimitRepository = AppLimitRepository(database.appLimitDao())
 
-        // Track launches to evaluate when to prompt the user for an app review/rating.
-        lifecycleScope.launch {
-            repository.incrementLaunchCount()
-        }
 
         setContent {
             val (gitHubUpdate, setGitHubUpdate) = remember { mutableStateOf<UpdateResult.GitHubUpdateAvailable?>(null) }
@@ -213,7 +208,7 @@ class MainActivity : ComponentActivity() {
                                     repository = repository,
                                     initialTheme = settings.themeMode,
                                     initialMaterialYou = settings.useMaterialYou,
-                                    initialAmoled = settings.useAmoled,
+                                    initialAMOLED = settings.useAmoled,
                                     initialAccent = settings.accentColor
                                 ) as T
                             }
@@ -272,9 +267,9 @@ class MainActivity : ComponentActivity() {
                 val themeMode by settingsViewModel.themeMode.collectAsState()
                 val languageCode by settingsViewModel.language.collectAsState()
                 val useMaterialYou by settingsViewModel.useMaterialYou.collectAsState()
-                val useAmoled by settingsViewModel.useAmoled.collectAsState()
+                val useAMOLED by settingsViewModel.useAMOLED.collectAsState()
                 val accentColor by settingsViewModel.accentColor.collectAsState()
-                val onboardingCompleted by repository.onboardingCompleted.collectAsState(null)
+                val onboardingCompleted by repository.onboardingCompleted.collectAsState(false)
 
                 val currentContext = LocalContext.current
                 val localizedContext = remember(languageCode, currentContext) {
@@ -291,24 +286,21 @@ class MainActivity : ComponentActivity() {
                     LocalConfiguration provides localizedContext.resources.configuration,
                     LocalLayoutDirection provides layoutDirection
                 ) {
+                    val context = LocalContext.current
 
                     val currentVersionCode = BuildConfig.VERSION_CODE
                     val (showChangelog, setShowChangelog) = remember { mutableStateOf(false) }
 
-                    val appLaunchCount by repository.appLaunchCount.collectAsState(0)
-                    val firstInstallTime by repository.firstInstallTime.collectAsState(0L)
-                    val lastReviewPromptTime by repository.lastReviewPromptTime.collectAsState(0L)
-                    val userReviewedRated by repository.userReviewedRated.collectAsState(false)
                     val lastVersionCode by repository.lastVersionCode.collectAsState(-1)
 
-                    val checkUpdatesAutomatically by repository.checkUpdatesAutomatically.collectAsState(true)
+                    val checkUpdatesAutomatically by repository.checkUpdatesAutomatically.collectAsState(false)
                     val lastUpdateCheckTime by repository.lastUpdateCheckTime.collectAsState(0L)
 
                     LaunchedEffect(onboardingCompleted) {
-                        if (onboardingCompleted == true) {
+                        if (onboardingCompleted) {
                             val now = System.currentTimeMillis()
                             val oneDay = 24 * 60 * 60 * 1000L
-                            if (checkUpdatesAutomatically && (now - lastUpdateCheckTime >= oneDay)) {
+                            if (checkUpdatesAutomatically && ((now - lastUpdateCheckTime) >= oneDay)) {
                                 repository.setLastUpdateCheckTime(now)
                                 appUpdateHelper.checkForUpdates { result ->
                                     when (result) {
@@ -329,52 +321,10 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Prompt user to rate the app after sufficient launches and time have elapsed.
-                    val context = LocalContext.current
-                    LaunchedEffect(onboardingCompleted, showChangelog, appLaunchCount, firstInstallTime, lastReviewPromptTime, userReviewedRated) {
-                        if (onboardingCompleted == true && !showChangelog && !userReviewedRated) {
-                            val now = System.currentTimeMillis()
-                            val threeDays = 3 * 24 * 60 * 60 * 1000L
-                            val sevenDays = 7 * 24 * 60 * 60 * 1000L
-
-                            val isTimeSinceInstallOk = (now - firstInstallTime) >= threeDays
-                            val isTimeSinceLastPromptOk = (now - lastReviewPromptTime) >= sevenDays
-                            val isLaunchCountOk = appLaunchCount >= 3
-
-                            if (isTimeSinceInstallOk && isTimeSinceLastPromptOk && isLaunchCountOk) {
-                                delay(2000.milliseconds)
-                                try {
-                                    val manager = ReviewManagerFactory.create(context)
-                                    Log.d("MainActivity", "Requesting Play In-App Review Flow")
-                                    manager.requestReviewFlow().addOnCompleteListener { requestTask ->
-                                        if (requestTask.isSuccessful) {
-                                            val reviewInfo = requestTask.result
-                                            Log.d("MainActivity", "Launching Play In-App Review Flow")
-                                            manager.launchReviewFlow(this@MainActivity, reviewInfo).addOnCompleteListener {
-                                                Log.d("MainActivity", "Play In-App Review completed")
-                                                lifecycleScope.launch {
-                                                    repository.setUserReviewedRated(true)
-                                                }
-                                            }
-                                        } else {
-                                            val exception = requestTask.exception
-                                            Log.e("MainActivity", "Play In-App Review request failed", exception)
-                                            lifecycleScope.launch {
-                                                repository.setLastReviewPromptTime(System.currentTimeMillis())
-                                            }
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("MainActivity", "Play In-App Review wrapper failed", e)
-                                    repository.setLastReviewPromptTime(System.currentTimeMillis())
-                                }
-                            }
-                        }
-                    }
 
                     // Check for version code changes to determine if we should update settings or trigger release changes.
                     LaunchedEffect(onboardingCompleted, lastVersionCode) {
-                        if ((onboardingCompleted == true) && (lastVersionCode != -1)) {
+                        if (onboardingCompleted && (lastVersionCode != -1)) {
                             if (lastVersionCode < currentVersionCode) {
                                 delay(1000.milliseconds)
                                 repository.updateLastVersionCode(currentVersionCode)
@@ -382,13 +332,13 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    if (onboardingCompleted != null) {
+                    if (onboardingCompleted) {
                         val monitoringEnabled by settingsViewModel.monitoringEnabled.collectAsState()
                         val appBlockingMasterEnabled by settingsViewModel.appBlockingMasterEnabled.collectAsState()
 
                         // Monitor the foreground tracking service lifecycle based on user settings.
                         LaunchedEffect(monitoringEnabled) {
-                            if ((onboardingCompleted == true) && (monitoringEnabled != null)) {
+                            if (monitoringEnabled != null) {
                                 val serviceIntent = Intent(this@MainActivity, NetworkMonitoringService::class.java)
                                 if (monitoringEnabled == true) {
                                     if (!NetworkMonitoringService.isRunning) {
@@ -404,14 +354,12 @@ class MainActivity : ComponentActivity() {
                         val widgetUpdateInterval by settingsViewModel.widgetUpdateInterval.collectAsState()
 
                         LaunchedEffect(widgetUpdateInterval) {
-                            if (onboardingCompleted == true) {
-                                WidgetUpdateScheduler.schedule(applicationContext, widgetUpdateInterval)
-                            }
+                            WidgetUpdateScheduler.schedule(applicationContext, widgetUpdateInterval)
                         }
 
                         // Automatically start VPN blocking service if master controls are toggled on.
                         LaunchedEffect(monitoringEnabled, appBlockingMasterEnabled) {
-                            if ((onboardingCompleted == true) && (monitoringEnabled == true) && (appBlockingMasterEnabled == true)) {
+                            if (monitoringEnabled == true && appBlockingMasterEnabled == true) {
                                 prepareVpn()
                             }
                         }
@@ -419,15 +367,14 @@ class MainActivity : ComponentActivity() {
                         FlowMeterTheme(
                             themeMode = themeMode,
                             useMaterialYou = useMaterialYou,
-                            useAmoled = useAmoled,
+                            useAmoled = useAMOLED,
                             accentColor = accentColor,
                         ) {
                             androidx.compose.material3.Surface(
                                 modifier = Modifier.fillMaxSize(),
                                 color = androidx.compose.material3.MaterialTheme.colorScheme.background
                             ) {
-                                if (onboardingCompleted == true) {
-                                    val (currentIntent, setCurrentIntent) = remember { mutableStateOf(intent) }
+                                val (currentIntent, setCurrentIntent) = remember { mutableStateOf(intent) }
 
                                     // Listen for resume lifecycle events to update current intent (e.g. user clicked notification while app is running).
                                     val lifecycleOwner = LocalLifecycleOwner.current
@@ -521,19 +468,19 @@ class MainActivity : ComponentActivity() {
                                         ChangelogDialog { setShowChangelog(false) }
                                     }
 
-                                    if (gitHubUpdate != null) {
+                                    gitHubUpdate?.let { update ->
                                         UpdateDialog(
-                                            tagName = gitHubUpdate.tag,
-                                            releaseNotes = gitHubUpdate.releaseNotes,
+                                            tagName = update.tag,
+                                            releaseNotes = update.releaseNotes,
                                             onDismiss = { setGitHubUpdate(null) },
                                             onIgnore = {
                                                 lifecycleScope.launch {
-                                                    repository.setIgnoredUpdateVersion(gitHubUpdate.tag)
+                                                    repository.setIgnoredUpdateVersion(update.tag)
                                                 }
                                                 setGitHubUpdate(null)
                                             },
                                             onUpdate = {
-                                                val updateIntent = Intent(Intent.ACTION_VIEW, gitHubUpdate.downloadUrl.toUri())
+                                                val updateIntent = Intent(Intent.ACTION_VIEW, update.downloadUrl.toUri())
                                                 try {
                                                     startActivity(updateIntent)
                                                 } catch (_: Exception) {}
@@ -541,16 +488,14 @@ class MainActivity : ComponentActivity() {
                                             }
                                         )
                                     }
-
-                                } else {
-                                    OnboardingScreen(
-                                        onComplete = {
-                                            onboardingViewModel.completeOnboarding()
-                                        },
-                                    )
-                                }
                             }
                         }
+                    } else {
+                        OnboardingScreen(
+                            onComplete = {
+                                onboardingViewModel.completeOnboarding()
+                            },
+                        )
                     }
                 }
             }

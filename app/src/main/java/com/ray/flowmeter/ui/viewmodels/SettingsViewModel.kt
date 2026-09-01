@@ -1,15 +1,10 @@
 package com.ray.flowmeter.ui.viewmodels
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ray.flowmeter.data.UserPreferencesRepository
-import com.ray.flowmeter.utils.BillingEvent
-import com.ray.flowmeter.utils.BillingManager
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -25,8 +20,8 @@ class SettingsViewModel(
     private val repository: UserPreferencesRepository,
     initialTheme: String = ThemeMode.SYSTEM,
     initialMaterialYou: Boolean = true,
-    initialAmoled: Boolean = false,
-    initialAccent: Long? = null
+    initialAMOLED: Boolean = false,
+    initialAccent: Long? = null,
 ) : ViewModel() {
 
     init {
@@ -62,8 +57,8 @@ class SettingsViewModel(
     val useMaterialYou: StateFlow<Boolean> = repository.useMaterialYou
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = initialMaterialYou)
 
-    val useAmoled: StateFlow<Boolean> = repository.useAmoled
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = initialAmoled)
+    val useAMOLED: StateFlow<Boolean> = repository.useAmoled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = initialAMOLED)
 
     val showNotification: StateFlow<Boolean> = repository.showNotification
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = true)
@@ -116,12 +111,6 @@ class SettingsViewModel(
     val vpnDisclosureAccepted: StateFlow<Boolean> = repository.vpnDisclosureAccepted
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = false)
 
-    val widgetShowSpeed: StateFlow<Boolean> = repository.widgetShowSpeed
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = true)
-
-    val widgetUsageType: StateFlow<String> = repository.widgetUsageType
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = "DAILY")
-
     val widgetUpdateInterval: StateFlow<Int> = repository.widgetUpdateInterval
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = 30)
 
@@ -161,7 +150,7 @@ class SettingsViewModel(
         }
     }
 
-    fun setUseAmoled(enabled: Boolean) {
+    fun setUseAMOLED(enabled: Boolean) {
         viewModelScope.launch {
             repository.setUseAmoled(enabled)
         }
@@ -229,93 +218,16 @@ class SettingsViewModel(
         }
     }
 
-    private var billingManager: BillingManager? = null
-    private val _billingEvents = MutableSharedFlow<BillingEvent>()
-    val billingEvents = _billingEvents.asSharedFlow()
-
-    // Initializes Play Billing client connection to handle voluntary user support donations.
-    fun initBilling(context: Context) {
-        if (billingManager == null) {
-            val manager = BillingManager(context.applicationContext, viewModelScope)
-            billingManager = manager
-            viewModelScope.launch {
-                manager.events.collect { event ->
-                    _billingEvents.emit(event)
-                }
-            }
-        }
-    }
-
-    fun makeDonation(activity: android.app.Activity, amount: String) {
-        val productId = when (amount) {
-            "1.00" -> "donate_1"
-            "2.50" -> "donate_2_5"
-            "6.00" -> "donate_6"
-            else -> return
-        }
-        billingManager?.makePurchase(activity, productId)
-    }
-
-    fun markAsReviewed() {
-        viewModelScope.launch {
-            repository.setUserReviewedRated(true)
-        }
-    }
-
-    fun setWidgetShowSpeed(show: Boolean) {
-        viewModelScope.launch { repository.setWidgetShowSpeed(show) }
-    }
-
-    fun setWidgetUsageType(type: String) {
-        viewModelScope.launch { repository.setWidgetUsageType(type) }
-    }
-
-    fun setWidgetUpdateInterval(interval: Int) {
-        viewModelScope.launch { repository.setWidgetUpdateInterval(interval) }
-    }
-
-    val supportBannerDismissed: StateFlow<Boolean> = repository.supportBannerDismissed
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-
-    val appLaunchCount: StateFlow<Int> = repository.appLaunchCount
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
-    val firstInstallTime: StateFlow<Long> = repository.firstInstallTime
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
-
     val checkUpdatesAutomatically: StateFlow<Boolean> = repository.checkUpdatesAutomatically
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
-
-    val lastUpdateCheckTime: StateFlow<Long> = repository.lastUpdateCheckTime
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
-
-    val ignoredUpdateVersion: StateFlow<String> = repository.ignoredUpdateVersion
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = false)
 
     val speedUnit: StateFlow<String> = repository.speedUnit
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "BYTES")
 
-    fun dismissSupportBanner() {
-        viewModelScope.launch {
-            repository.setSupportBannerDismissed(true)
-        }
-    }
 
     fun setCheckUpdatesAutomatically(enabled: Boolean) {
         viewModelScope.launch {
             repository.setCheckUpdatesAutomatically(enabled)
-        }
-    }
-
-    fun setLastUpdateCheckTime(time: Long) {
-        viewModelScope.launch {
-            repository.setLastUpdateCheckTime(time)
-        }
-    }
-
-    fun setIgnoredUpdateVersion(version: String) {
-        viewModelScope.launch {
-            repository.setIgnoredUpdateVersion(version)
         }
     }
 

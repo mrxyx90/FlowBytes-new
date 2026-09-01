@@ -3,61 +3,117 @@
 package com.ray.flowmeter.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Widgets
+import androidx.compose.material.icons.outlined.Assessment
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
+import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.serialization.Serializable
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
+import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.ui.NavDisplay
 import com.ray.flowmeter.R
 import com.ray.flowmeter.data.UserPreferencesRepository
-import com.ray.flowmeter.ui.theme.StaggeredEntrance
-import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
-import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
-import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import androidx.navigation3.ui.NavDisplay
-import androidx.navigation3.runtime.NavEntry
 import com.ray.flowmeter.ui.dialogs.MuteAppDialog
-import androidx.compose.ui.platform.LocalContext
+import com.ray.flowmeter.ui.theme.StaggeredEntrance
 import com.ray.flowmeter.ui.viewmodels.AlertsViewModel
 import com.ray.flowmeter.ui.viewmodels.AppLimitsViewModel
 import com.ray.flowmeter.ui.viewmodels.AppUsageViewModel
 import com.ray.flowmeter.ui.viewmodels.HomeViewModel
 import com.ray.flowmeter.ui.viewmodels.SettingsViewModel
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
-import com.ray.flowmeter.ui.dialogs.DonateDialog
-import com.ray.flowmeter.utils.BillingEvent
+import kotlinx.coroutines.delay
+import kotlinx.serialization.Serializable
+import kotlin.time.Duration.Companion.milliseconds
+
 @Serializable
 sealed interface Destination {
     @Serializable
@@ -105,11 +161,11 @@ fun MainScreen(
 
     var activeLayoutDestination by remember { mutableStateOf(initialDestination) }
     LaunchedEffect(currentDestination) {
-        if (currentDestination == Destination.AppPicker || currentDestination == Destination.Widgets) {
+        activeLayoutDestination = if ((currentDestination == Destination.AppPicker) || (currentDestination == Destination.Widgets)) {
             delay(500.milliseconds)
-            activeLayoutDestination = currentDestination
+            currentDestination
         } else {
-            activeLayoutDestination = currentDestination
+            currentDestination
         }
     }
 
@@ -134,64 +190,12 @@ fun MainScreen(
         }
     }
 
-    val hostState = remember { SnackbarHostState() }
-    val showUsageFilters by appUsageViewModel.showFilters.collectAsState()
-    var showAlertsFilters by remember { mutableStateOf(false) }
-
     val context = LocalContext.current
     val repository = remember { UserPreferencesRepository(context.applicationContext) }
-    val locale = LocalConfiguration.current.locales[0]
-    var showDonateDialog by remember { mutableStateOf(false) }
-    var isDonationSuccess by remember { mutableStateOf(false) }
+    val showUsageFilters by appUsageViewModel.showFilters.collectAsState()
+    var showAlertsFilters by remember { mutableStateOf(value = false) }
 
-    LaunchedEffect(Unit) {
-        settingsViewModel.initBilling(context)
-    }
 
-    val donationCancelledMessage = stringResource(R.string.msg_donation_cancelled)
-    val donationFailedMessage = stringResource(R.string.msg_donation_failed)
-
-    LaunchedEffect(Unit) {
-        settingsViewModel.billingEvents.collect { event ->
-            when (event) {
-                is BillingEvent.Success -> {
-                    isDonationSuccess = true
-                    showDonateDialog = true
-                }
-                is BillingEvent.Cancelled -> {
-                    hostState.showSnackbar(donationCancelledMessage)
-                }
-                is BillingEvent.Error -> {
-                    hostState.showSnackbar(String.format(locale, donationFailedMessage, event.message))
-                }
-            }
-        }
-    }
-
-    // Milestone-based support prompt: show a snackbar after sufficient usage.
-    val supportBannerDismissed by settingsViewModel.supportBannerDismissed.collectAsState()
-    val appLaunchCount by settingsViewModel.appLaunchCount.collectAsState()
-    val firstInstallTime by settingsViewModel.firstInstallTime.collectAsState()
-    val supportPromptMessage = stringResource(R.string.snackbar_support_prompt)
-    val supportPromptAction = stringResource(R.string.snackbar_support_action)
-
-    LaunchedEffect(supportBannerDismissed, appLaunchCount, firstInstallTime) {
-        if (!supportBannerDismissed && appLaunchCount >= 5 && firstInstallTime > 0L) {
-            val threeDays = 3.days
-            if ((System.currentTimeMillis() - firstInstallTime).milliseconds >= threeDays) {
-                delay(3.seconds)
-                settingsViewModel.dismissSupportBanner()
-                val result = hostState.showSnackbar(
-                    message = supportPromptMessage,
-                    actionLabel = supportPromptAction,
-                    duration = SnackbarDuration.Long
-                )
-                if (result == SnackbarResult.ActionPerformed) {
-                    showDonateDialog = true
-                }
-            }
-        }
-    }
 
     // Update data when switching tabs
     LaunchedEffect(currentDestination) {
@@ -237,12 +241,12 @@ fun MainScreen(
                 val navRailAlpha by animateFloatAsState(
                     targetValue = if (currentDestination == Destination.AppPicker || currentDestination == Destination.Widgets) 0f else 1f,
                     animationSpec = tween(300),
-                    label = "NavRailAlpha"
+                    label = "NavRailAlpha",
                 )
 
                 NavigationRail(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    modifier = Modifier.graphicsLayer { alpha = navRailAlpha }
+                    modifier = Modifier.graphicsLayer { alpha = navRailAlpha },
                 ) {
                     Spacer(modifier = Modifier.weight(1f))
                     NavigationRailItem(
@@ -331,7 +335,6 @@ fun MainScreen(
 
             Scaffold(
                 modifier = Modifier.weight(1f),
-                snackbarHost = { SnackbarHost(hostState) },
                 topBar = {
                 val showGlobalTopBar = activeLayoutDestination != Destination.AppPicker && activeLayoutDestination != Destination.Widgets
                 if (showGlobalTopBar) {
@@ -437,9 +440,6 @@ fun MainScreen(
 
                                     if (activeLayoutDestination == Destination.Limits) {
                                         val appBlockingMasterEnabled by appLimitsViewModel.appBlockingMasterEnabled.collectAsState()
-                                        val scope = rememberCoroutineScope()
-                                        val firewallEnabledMsg = stringResource(R.string.msg_firewall_enabled)
-                                        val firewallDisabledMsg = stringResource(R.string.msg_firewall_disabled)
                                         
                                         val buttonBgColor by animateColorAsState(
                                             targetValue = if (appBlockingMasterEnabled) MaterialTheme.colorScheme.primaryContainer
@@ -458,18 +458,6 @@ fun MainScreen(
                                             onClick = {
                                                 val targetState = !appBlockingMasterEnabled
                                                 appLimitsViewModel.setAppBlockingMasterEnabled(targetState)
-                                                scope.launch {
-                                                    hostState.currentSnackbarData?.dismiss()
-                                                    val msg = if (targetState) firewallEnabledMsg else firewallDisabledMsg
-                                                    val job = launch {
-                                                        hostState.showSnackbar(
-                                                            message = msg,
-                                                            duration = SnackbarDuration.Indefinite
-                                                        )
-                                                    }
-                                                    delay(800.milliseconds)
-                                                    job.cancel()
-                                                }
                                             },
                                             colors = IconButtonDefaults.iconButtonColors(
                                                 containerColor = buttonBgColor,
@@ -735,7 +723,6 @@ fun MainScreen(
                         Destination.Settings -> NavEntry(key) {
                             SettingsScreen(
                                 viewModel = settingsViewModel,
-                                onDonateClick = { showDonateDialog = true },
                                 onCheckForUpdates = onCheckForUpdates,
                                 modifier = Modifier.fillMaxSize().padding(lastStablePadding).nestedScroll(settingsScrollBehavior.nestedScrollConnection)
                             )
@@ -772,12 +759,12 @@ fun MainScreen(
 
         val context = LocalContext.current
         val muteAppName = alertsViewModel.muteRequestAppName
-        if (muteAppName != null) {
+        muteAppName?.let {
             MuteAppDialog(
-                appName = muteAppName,
+                appName = it,
                 onDismiss = { alertsViewModel.clearMuteRequest() },
                 onConfirm = { durationMs ->
-                    alertsViewModel.muteApp(context, muteAppName, durationMs)
+                    alertsViewModel.muteApp(context, it, durationMs)
                 }
             )
         }
@@ -900,28 +887,6 @@ fun MainScreen(
         }
         }
 
-        if (showDonateDialog) {
-            DonateDialog(
-                isSuccess = isDonationSuccess,
-                onDismiss = {
-                    showDonateDialog = false
-                    isDonationSuccess = false
-                },
-            ) { amount ->
-                val activity = context.findActivity()
-                activity?.let {
-                    settingsViewModel.makeDonation(it, amount)
-                }
-            }
-        }
     }
 }
 
-private fun Context.findActivity(): Activity? {
-    var currentContext = this
-    while (currentContext is ContextWrapper) {
-        if (currentContext is Activity) return currentContext
-        currentContext = currentContext.baseContext
-    }
-    return null
-}

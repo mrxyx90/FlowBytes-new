@@ -402,7 +402,6 @@
     <string name="toast_checking_updates">अपडेट की जाँच की जा रही है...</string>
     <string name="snackbar_support_prompt">FlowBytes पसंद आ रहा है? हमारे विज्ञापन-मुक्त विकास का समर्थन करें!</string>
     <string name="snackbar_support_action">समर्थन करें</string>
-    <string name="btn_skip_for_now">अभी छोड़ें</string>
     <string name="title_custom_limit_widget">कस्टम नेटवर्क सीमा विजेट</string>
     <string name="label_custom_limit_caps">कस्टम नेटवर्क सीमा</string>
     <string name="msg_usage_stats_permission_disabled">उपयोग आँकड़े अनुमति अक्षम है। अनुमति देने के लिए टैप करें।</string>

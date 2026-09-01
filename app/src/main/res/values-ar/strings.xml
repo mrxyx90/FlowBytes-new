@@ -404,7 +404,6 @@
     <string name="toast_checking_updates">جاري التحقق من وجود تحديثات...</string>
     <string name="snackbar_support_prompt">هل تستمتع بـ FlowBytes؟ ادعم تطويرنا الخالي من الإعلانات!</string>
     <string name="snackbar_support_action">دعم</string>
-    <string name="btn_skip_for_now">تخطي الآن</string>
     <string name="title_custom_limit_widget">أداة حد الشبكة المخصصة</string>
     <string name="label_custom_limit_caps">حد الشبكة المخصص</string>
     <string name="msg_usage_stats_permission_disabled">إذن إحصاءات الاستخدام معطل. اضغط للمنح.</string>

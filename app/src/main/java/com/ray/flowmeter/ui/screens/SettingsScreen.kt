@@ -2,33 +2,79 @@
 // reset scheduling, background tracking threshold tuning, and app support options.
 package com.ray.flowmeter.ui.screens
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import com.ray.flowmeter.utils.PermissionHelper
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.ColorLens
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.Dashboard
+import androidx.compose.material.icons.rounded.DataUsage
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.FormatSize
+import androidx.compose.material.icons.rounded.Gavel
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.NotificationImportant
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Update
+import androidx.compose.material.icons.rounded.WarningAmber
+import androidx.compose.material.icons.rounded.WifiTethering
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import com.ray.flowmeter.R
 import com.ray.flowmeter.ui.components.SettingsGroup
 import com.ray.flowmeter.ui.components.SettingsItem
-import com.ray.flowmeter.ui.dialogs.*
+import com.ray.flowmeter.ui.dialogs.AccentColorDialog
+import com.ray.flowmeter.ui.dialogs.IconScaleDialog
+import com.ray.flowmeter.ui.dialogs.LanguageDialog
+import com.ray.flowmeter.ui.dialogs.LegalDialog
+import com.ray.flowmeter.ui.dialogs.NotificationContentDialog
+import com.ray.flowmeter.ui.dialogs.ResetDayDialog
+import com.ray.flowmeter.ui.dialogs.ResetTimeDialog
+import com.ray.flowmeter.ui.dialogs.SpeedUnitDialog
+import com.ray.flowmeter.ui.dialogs.ThemeDialog
+import com.ray.flowmeter.ui.dialogs.TrafficSettingsDialog
+import com.ray.flowmeter.ui.dialogs.VpnDisclosureDialog
 import com.ray.flowmeter.ui.theme.ThemeMode
 import com.ray.flowmeter.ui.viewmodels.SettingsViewModel
+import com.ray.flowmeter.utils.PermissionHelper
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -36,7 +82,6 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
-    onDonateClick: () -> Unit,
     onCheckForUpdates: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -65,7 +110,7 @@ fun SettingsScreen(
     val monitoringEnabled by viewModel.monitoringEnabled.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
     val useMaterialYou by viewModel.useMaterialYou.collectAsState()
-    val useAmoled by viewModel.useAmoled.collectAsState()
+    val useAMOLED by viewModel.useAMOLED.collectAsState()
     val showNotification by viewModel.showNotification.collectAsState()
     val notificationContentType by viewModel.notificationContentType.collectAsState()
     val speedUnit by viewModel.speedUnit.collectAsState()
@@ -143,15 +188,12 @@ fun SettingsScreen(
     var showTermsDialog by remember { mutableStateOf(value = false) }
     var showResetTimeDialog by remember { mutableStateOf(false) }
     var showResetDayDialog by remember { mutableStateOf(false) }
-    var showHelpFeedbackDialog by remember { mutableStateOf(false) }
 
     var showTrafficSettingsDialog by remember { mutableStateOf(false) }
     var showVpnDisclosure by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
 
-    val shareTextTemplate = stringResource(R.string.share_text_body, context.packageName)
-    val shareChooserTitle = stringResource(R.string.label_share_via)
 
     Column(
         modifier = modifier
@@ -267,10 +309,10 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_amoled_mode_desc),
                     trailingContent = {
                         Switch(
-                            checked = useAmoled,
-                            onCheckedChange = { viewModel.setUseAmoled(it) },
+                            checked = useAMOLED,
+                            onCheckedChange = { viewModel.setUseAMOLED(it) },
                             colors = switchColors,
-                            thumbContent = { thumbContent(useAmoled) }
+                            thumbContent = { thumbContent(useAMOLED) }
                         )
                     }
                 )
@@ -416,67 +458,8 @@ fun SettingsScreen(
             )
         }
 
-        SettingsGroup(title = stringResource(R.string.settings_section_support), staggerIndex = 4) {
-            SettingsItem(
-                icon = Icons.Rounded.Star,
-                title = stringResource(R.string.settings_rate_app),
-                subtitle = stringResource(R.string.settings_rate_app_desc),
-                onClick = {
-                    viewModel.markAsReviewed()
-                    val intent = Intent(Intent.ACTION_VIEW, "market://details?id=${context.packageName}".toUri())
-                    val activity = context.findActivity()
-                    val targetContext = activity ?: context
-                    if (targetContext !is Activity) {
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    try {
-                        targetContext.startActivity(intent)
-                    } catch (_: Exception) {
-                        val webIntent = Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/details?id=${context.packageName}".toUri())
-                        if (targetContext !is Activity) {
-                            webIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                        try {
-                            targetContext.startActivity(webIntent)
-                        } catch (_: Exception) {}
-                    }
-                }
-            )
-            SettingsItem(
-                icon = Icons.Rounded.Share,
-                title = stringResource(R.string.settings_share_app),
-                subtitle = stringResource(R.string.settings_share_app_desc),
-                onClick = {
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, shareTextTemplate)
-                    }
-                    val chooserIntent = Intent.createChooser(shareIntent, shareChooserTitle)
-                    val activity = context.findActivity()
-                    val targetContext = activity ?: context
-                    if (targetContext !is Activity) {
-                        chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    try {
-                        targetContext.startActivity(chooserIntent)
-                    } catch (_: Exception) {}
-                }
-            )
-            SettingsItem(
-                icon = Icons.Rounded.SupportAgent,
-                title = stringResource(R.string.settings_help_feedback),
-                subtitle = stringResource(R.string.settings_help_feedback_desc),
-                onClick = { showHelpFeedbackDialog = true }
-            )
-            SettingsItem(
-                icon = Icons.Rounded.Favorite,
-                title = stringResource(R.string.settings_donate),
-                subtitle = stringResource(R.string.settings_donate_desc),
-                onClick = onDonateClick
-            )
-        }
 
-        SettingsGroup(title = stringResource(R.string.settings_section_about), staggerIndex = 5) {
+        SettingsGroup(title = stringResource(R.string.settings_section_about), staggerIndex = 4) {
             SettingsItem(
                 icon = Icons.Rounded.Shield,
                 title = stringResource(R.string.settings_privacy_policy),
@@ -491,22 +474,6 @@ fun SettingsScreen(
                 icon = Icons.Rounded.Description,
                 title = stringResource(R.string.settings_licenses),
                 onClick = { showLicensesDialog = true }
-            )
-            SettingsItem(
-                icon = Icons.Rounded.Code,
-                title = stringResource(R.string.settings_view_source),
-                subtitle = stringResource(R.string.settings_view_source_desc),
-                onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, "https://github.com/drrayy001/FlowBytes".toUri())
-                    val activity = context.findActivity()
-                    val targetContext = activity ?: context
-                    if (targetContext !is Activity) {
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    try {
-                        targetContext.startActivity(intent)
-                    } catch (_: Exception) {}
-                }
             )
             SettingsItem(
                 icon = Icons.Rounded.CloudDownload,
@@ -645,59 +612,6 @@ fun SettingsScreen(
         }
     }
 
-    if (showHelpFeedbackDialog) {
-        HelpFeedbackDialog(
-            onDismiss = { showHelpFeedbackDialog = false },
-            onTelegramClick = {
-                val username = "Rayy_TG"
-                val telegramAppIntent = Intent(Intent.ACTION_VIEW, "tg://resolve?domain=$username".toUri()).apply {
-                    setPackage("org.telegram.messenger")
-                }
-                val activity = context.findActivity()
-                val targetContext = activity ?: context
-                if (targetContext !is Activity) {
-                    telegramAppIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                try {
-                    targetContext.startActivity(telegramAppIntent)
-                } catch (_: Exception) {
-                    // Fallback to browser if Telegram app is not installed
-                    val browserIntent = Intent(Intent.ACTION_VIEW, "https://t.me/$username".toUri())
-                    if (targetContext !is Activity) {
-                        browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    try {
-                        targetContext.startActivity(browserIntent)
-                    } catch (_: Exception) {}
-                }
-            },
-            onEmailClick = {
-                val intent = Intent(Intent.ACTION_SENDTO).apply {
-                    data = "mailto:support.rayapps@gmail.com".toUri()
-                    putExtra(Intent.EXTRA_SUBJECT, "Feedback: FlowBytes (v$versionName)")
-                }
-                val activity = context.findActivity()
-                val targetContext = activity ?: context
-                if (targetContext !is Activity) {
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                try {
-                    targetContext.startActivity(intent)
-                } catch (_: Exception) {}
-            },
-            onReportBugClick = {
-                val intent = Intent(Intent.ACTION_VIEW, "https://github.com/drrayy001/FlowBytes/issues".toUri())
-                val activity = context.findActivity()
-                val targetContext = activity ?: context
-                if (targetContext !is Activity) {
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                try {
-                    targetContext.startActivity(intent)
-                } catch (_: Exception) {}
-            }
-        )
-    }
 
     if (showAccentColorDialog) {
         AccentColorDialog(
@@ -707,11 +621,3 @@ fun SettingsScreen(
     }
 }
 
-private fun Context.findActivity(): Activity? {
-    var currentContext = this
-    while (currentContext is ContextWrapper) {
-        if (currentContext is Activity) return currentContext
-        currentContext = currentContext.baseContext
-    }
-    return null
-}

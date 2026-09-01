@@ -151,7 +151,7 @@ abstract class FlowMeterDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     FlowMeterDatabase::class.java,
-                    "flowmeter_database"
+                    "flowmeter_database",
                 )
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
@@ -282,15 +282,7 @@ class UserPreferencesRepository(private val context: Context) {
         val MONTHLY_RESET_DAY = intPreferencesKey("monthly_reset_day")
         val LANGUAGE = stringPreferencesKey("language")
 
-        val APP_LAUNCH_COUNT = intPreferencesKey("app_launch_count")
-        val FIRST_INSTALL_TIME = longPreferencesKey("first_install_time")
-        val LAST_REVIEW_PROMPT_TIME = longPreferencesKey("last_review_prompt_time")
-        val USER_REVIEWED_RATED = booleanPreferencesKey("user_reviewed_rated")
-
-        val WIDGET_SHOW_SPEED = booleanPreferencesKey("widget_show_speed")
-        val WIDGET_USAGE_TYPE = stringPreferencesKey("widget_usage_type") // "DAILY", "MONTHLY"
         val WIDGET_UPDATE_INTERVAL = intPreferencesKey("widget_update_interval")
-        val SUPPORT_BANNER_DISMISSED = booleanPreferencesKey("support_banner_dismissed")
         val CHECK_UPDATES_AUTOMATICALLY = booleanPreferencesKey("check_updates_automatically")
         val LAST_UPDATE_CHECK_TIME = longPreferencesKey("last_update_check_time")
         val IGNORED_UPDATE_VERSION = stringPreferencesKey("ignored_update_version")
@@ -318,10 +310,6 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.ONBOARDING_COMPLETED] ?: false
         }.distinctUntilChanged()
 
-    val supportBannerDismissed: Flow<Boolean> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.SUPPORT_BANNER_DISMISSED] ?: false
-        }.distinctUntilChanged()
 
     val monitoringEnabled: Flow<Boolean> = preferencesFlow
         .map { preferences ->
@@ -593,35 +581,6 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.LANGUAGE] ?: ""
         }.distinctUntilChanged()
 
-    val appLaunchCount: Flow<Int> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.APP_LAUNCH_COUNT] ?: 0
-        }.distinctUntilChanged()
-
-    val firstInstallTime: Flow<Long> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.FIRST_INSTALL_TIME] ?: 0L
-        }.distinctUntilChanged()
-
-    val lastReviewPromptTime: Flow<Long> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.LAST_REVIEW_PROMPT_TIME] ?: 0L
-        }.distinctUntilChanged()
-
-    val userReviewedRated: Flow<Boolean> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.USER_REVIEWED_RATED] ?: false
-        }.distinctUntilChanged()
-
-    val widgetShowSpeed: Flow<Boolean> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.WIDGET_SHOW_SPEED] ?: true
-        }.distinctUntilChanged()
-
-    val widgetUsageType: Flow<String> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.WIDGET_USAGE_TYPE] ?: "DAILY"
-        }.distinctUntilChanged()
 
     val widgetUpdateInterval: Flow<Int> = preferencesFlow
         .map { preferences ->
@@ -630,7 +589,7 @@ class UserPreferencesRepository(private val context: Context) {
 
     val checkUpdatesAutomatically: Flow<Boolean> = preferencesFlow
         .map { preferences ->
-            preferences[PreferencesKeys.CHECK_UPDATES_AUTOMATICALLY] ?: true
+            preferences[PreferencesKeys.CHECK_UPDATES_AUTOMATICALLY] ?: false
         }.distinctUntilChanged()
 
     val lastUpdateCheckTime: Flow<Long> = preferencesFlow
@@ -1005,39 +964,8 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun incrementLaunchCount() {
-        context.dataStore.edit { preferences ->
-            val current = preferences[PreferencesKeys.APP_LAUNCH_COUNT] ?: 0
-            preferences[PreferencesKeys.APP_LAUNCH_COUNT] = current + 1
-            if ((preferences[PreferencesKeys.FIRST_INSTALL_TIME] == null) || (preferences[PreferencesKeys.FIRST_INSTALL_TIME] == 0L)) {
-                preferences[PreferencesKeys.FIRST_INSTALL_TIME] = System.currentTimeMillis()
-            }
-        }
-    }
 
-    suspend fun setUserReviewedRated(reviewed: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.USER_REVIEWED_RATED] = reviewed
-        }
-    }
 
-    suspend fun setLastReviewPromptTime(time: Long) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.LAST_REVIEW_PROMPT_TIME] = time
-        }
-    }
-
-    suspend fun setWidgetShowSpeed(show: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.WIDGET_SHOW_SPEED] = show
-        }
-    }
-
-    suspend fun setWidgetUsageType(type: String) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.WIDGET_USAGE_TYPE] = type
-        }
-    }
 
     suspend fun setWidgetUpdateInterval(intervalMinutes: Int) {
         context.dataStore.edit { preferences ->
@@ -1045,11 +973,6 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun setSupportBannerDismissed(dismissed: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.SUPPORT_BANNER_DISMISSED] = dismissed
-        }
-    }
 
     suspend fun setCheckUpdatesAutomatically(enabled: Boolean) {
         context.dataStore.edit { preferences ->

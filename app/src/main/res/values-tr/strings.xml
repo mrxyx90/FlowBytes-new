@@ -222,7 +222,6 @@
     <string name="title_custom_color">Rengi Özelleştir</string>
     <string name="btn_apply">Uygula</string>
     <string name="btn_get_started">Başlayın</string>
-    <string name="btn_skip_for_now">Şimdilik Atla</string>
     <string name="title_welcome">FlowBytes\'a Hoş Geldiniz</string>
     <string name="msg_onboarding_desc">Doğru veri takibi ve canlı hız izleme sağlamak için birkaç izne ihtiyacımız var.</string>
     <string name="label_usage_access">Kullanım Erişimi</string>

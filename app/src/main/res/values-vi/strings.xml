@@ -222,7 +222,6 @@
     <string name="title_custom_color">Tùy chỉnh màu</string>
     <string name="btn_apply">Áp dụng</string>
     <string name="btn_get_started">Bắt đầu</string>
-    <string name="btn_skip_for_now">Bỏ qua lúc này</string>
     <string name="title_welcome">Chào mừng đến với FlowBytes</string>
     <string name="msg_onboarding_desc">Để theo dõi chính xác, chúng tôi cần một số quyền truy cập.</string>
     <string name="label_usage_access">Quyền truy cập dữ liệu</string>

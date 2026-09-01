@@ -164,8 +164,6 @@ class NetworkMonitoringService : Service() {
     private var monthlyResetDay = 1
     private var showOnlyWhenConnected = false
     private var highTrafficDetectionEnabled = false
-    private var widgetUsageType = "DAILY"
-    private var widgetShowSpeed = true
     private var speedUnitStr = "BYTES"
 
     private var isScreenOn = true
@@ -268,8 +266,6 @@ class NetworkMonitoringService : Service() {
         serviceScope.launch { repository.resetTimeHour.collect { resetHour = it } }
         serviceScope.launch { repository.resetTimeMinute.collect { resetMinute = it } }
         serviceScope.launch { repository.monthlyResetDay.collect { monthlyResetDay = it } }
-        serviceScope.launch { repository.widgetUsageType.collect { widgetUsageType = it } }
-        serviceScope.launch { repository.widgetShowSpeed.collect { widgetShowSpeed = it } }
         serviceScope.launch { repository.speedUnit.collect { speedUnitStr = it } }
         serviceScope.launch { 
             var isFirst = true

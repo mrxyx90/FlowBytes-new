@@ -402,7 +402,6 @@
     <string name="toast_checking_updates">Проверка обновлений...</string>
     <string name="snackbar_support_prompt">Нравится FlowBytes? Поддержите разработку без рекламы!</string>
     <string name="snackbar_support_action">Поддержать</string>
-    <string name="btn_skip_for_now">Пропустить</string>
     <string name="title_custom_limit_widget">Виджет лимита сети</string>
     <string name="label_custom_limit_caps">ЛИМИТ СЕТИ</string>
     <string name="msg_usage_stats_permission_disabled">Доступ к статистике использования отключен. Нажмите, чтобы разрешить.</string>
