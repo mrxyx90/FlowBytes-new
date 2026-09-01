@@ -18,8 +18,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import com.ray.flowmeter.R
 import com.ray.flowmeter.data.AppLimit
@@ -40,7 +38,14 @@ fun AppLimitEditScreen(
         mutableStateOf(if ((limit.dataLimit >= 1024L * 1024L * 1024L) && (limit.dataLimit % (1024L * 1024L * 1024L) == 0L)) "GB" else "MB")
     }
     val (limitType, setLimitType) = remember(limit) { mutableStateOf(limit.limitType) }
-    val (networkType, setNetworkType) = remember(limit) { mutableStateOf(limit.networkType) }
+    val (networkType, setNetworkType) = remember(limit) {
+        val initialTypes = if (limit.networkType == "both") {
+            setOf("wifi", "mobile")
+        } else {
+            limit.networkType.split(",").filter { it.isNotBlank() }.toSet()
+        }
+        mutableStateOf(initialTypes)
+    }
 
     val (wifiLimitInput, setWifiLimitInput) = remember(limit) {
         val mb = limit.wifiDataLimit / (1024 * 1024)
@@ -169,7 +174,7 @@ fun AppLimitEditScreen(
                             limit.copy(
                                 dataLimit = value * multiplier,
                                 limitType = limitType,
-                                networkType = networkType,
+                                networkType = networkType.joinToString(","),
                                 wifiDataLimit = wifiValue * wifiMultiplier,
                                 mobileDataLimit = mobileValue * mobileMultiplier,
                                 isBlocked = false,

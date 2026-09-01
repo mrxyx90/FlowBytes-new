@@ -1448,45 +1448,67 @@ class NetworkMonitoringService : Service() {
                         total
                     } else 0L
 
-                    val currentUsage = when (limit.networkType) {
-                        "wifi" -> wifiUsage
-                        "mobile" -> mobileUsage
-                        "four_g" -> fourGUsage
-                        else -> wifiUsage + mobileUsage
-                    }
+                    val currentUsage = if (limit.isFourGEnabled()) fourGUsage 
+                                       else if (limit.isWifiEnabled() && !limit.isMobileEnabled()) wifiUsage
+                                       else if (limit.isMobileEnabled() && !limit.isWifiEnabled()) mobileUsage
+                                       else wifiUsage + mobileUsage
 
-                    if (currentUsage != limit.currentUsage || wifiUsage != limit.currentWifiUsage || mobileUsage != limit.currentMobileUsage) {
+                    if (wifiUsage != limit.currentWifiUsage || mobileUsage != limit.currentMobileUsage) {
                         var updatedLimit = limit.copy(
                             currentUsage = currentUsage,
                             currentWifiUsage = wifiUsage,
                             currentMobileUsage = mobileUsage
                         )
 
-                        if (limit.networkType == "both") {
-                            val wifiOver = (wifiUsage >= limit.wifiDataLimit) && (limit.wifiDataLimit > 0)
-                            val mobileOver = (mobileUsage >= limit.mobileDataLimit) && (limit.mobileDataLimit > 0)
+                        var isAnyBlockedStatusChanged = false
 
+                        // Check Wifi
+                        if (limit.isWifiEnabled()) {
+                            val wifiOver = (wifiUsage >= limit.wifiDataLimit) && (limit.wifiDataLimit > 0)
                             if (wifiOver && !limit.isWifiBlocked) {
                                 sendAppLimitAlert(updatedLimit.copy(isWifiBlocked = true, networkType = "wifi", dataLimit = limit.wifiDataLimit))
                             }
+                            if (wifiOver != limit.isWifiBlocked) {
+                                updatedLimit = updatedLimit.copy(isWifiBlocked = wifiOver)
+                                isAnyBlockedStatusChanged = true
+                            }
+                        } else if (limit.isWifiBlocked) {
+                            updatedLimit = updatedLimit.copy(isWifiBlocked = false)
+                            isAnyBlockedStatusChanged = true
+                        }
+
+                        // Check Mobile
+                        if (limit.isMobileEnabled()) {
+                            val mobileOver = (mobileUsage >= limit.mobileDataLimit) && (limit.mobileDataLimit > 0)
                             if (mobileOver && !limit.isMobileBlocked) {
                                 sendAppLimitAlert(updatedLimit.copy(isMobileBlocked = true, networkType = "mobile", dataLimit = limit.mobileDataLimit))
                             }
-
-                            updatedLimit = updatedLimit.copy(
-                                isWifiBlocked = wifiOver,
-                                isMobileBlocked = mobileOver,
-                            )
-                            appLimitRepository.update(updatedLimit)
-                        } else {
-                            if (currentUsage >= limit.dataLimit && !limit.isBlocked) {
-                                sendAppLimitAlert(updatedLimit.copy(isBlocked = true))
-                                appLimitRepository.update(updatedLimit.copy(isBlocked = true))
-                            } else if (currentUsage < limit.dataLimit && limit.isBlocked) {
-                                appLimitRepository.update(updatedLimit.copy(isBlocked = false))
-                            } else {
-                                appLimitRepository.update(updatedLimit)
+                            if (mobileOver != limit.isMobileBlocked) {
+                                updatedLimit = updatedLimit.copy(isMobileBlocked = mobileOver)
+                                isAnyBlockedStatusChanged = true
                             }
+                        } else if (limit.isMobileBlocked) {
+                            updatedLimit = updatedLimit.copy(isMobileBlocked = false)
+                            isAnyBlockedStatusChanged = true
+                        }
+
+                        // Check 4G
+                        if (limit.isFourGEnabled()) {
+                            val fourGOver = (fourGUsage >= limit.dataLimit) && (limit.dataLimit > 0)
+                            if (fourGOver && !limit.isBlocked) {
+                                sendAppLimitAlert(updatedLimit.copy(isBlocked = true, networkType = "four_g", dataLimit = limit.dataLimit))
+                            }
+                            if (fourGOver != limit.isBlocked) {
+                                updatedLimit = updatedLimit.copy(isBlocked = fourGOver)
+                                isAnyBlockedStatusChanged = true
+                            }
+                        } else if (limit.isBlocked) {
+                            updatedLimit = updatedLimit.copy(isBlocked = false)
+                            isAnyBlockedStatusChanged = true
+                        }
+
+                        if (isAnyBlockedStatusChanged || currentUsage != limit.currentUsage) {
+                            appLimitRepository.update(updatedLimit)
                         }
                     }
                 } catch (_: Exception) { }

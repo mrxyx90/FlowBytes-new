@@ -65,7 +65,7 @@ data class AppLimit(
     val appName: String,
     val dataLimit: Long,
     val limitType: String = "daily",
-    val networkType: String = "both",
+    val networkType: String = "four_g",
     val currentUsage: Long = 0L,
     val currentWifiUsage: Long = 0L,
     val currentMobileUsage: Long = 0L,
@@ -77,7 +77,11 @@ data class AppLimit(
     val isMobileBlocked: Boolean = false,
     val isEnabled: Boolean = true,
     val isManuallyBlocked: Boolean = false,
-)
+) {
+    fun isWifiEnabled(): Boolean = networkType.contains("wifi", ignoreCase = true) || networkType.contains("both", ignoreCase = true)
+    fun isMobileEnabled(): Boolean = networkType.contains("mobile", ignoreCase = true) || networkType.contains("both", ignoreCase = true)
+    fun isFourGEnabled(): Boolean = networkType.contains("four_g", ignoreCase = true)
+}
 
 @Entity(tableName = "four_g_sessions")
 data class FourGSession(

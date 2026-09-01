@@ -718,7 +718,7 @@ fun AppLimitItem(
             }
 
             if (limit.isEnabled && !limit.isManuallyBlocked) {
-                if ((limit.networkType == "both") || (limit.networkType == "wifi")) {
+                if (limit.isWifiEnabled()) {
                     Spacer(modifier = Modifier.height(20.dp))
                     
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -799,7 +799,7 @@ fun AppLimitItem(
                     }
                 }
 
-                if ((limit.networkType == "both") || (limit.networkType == "mobile")) {
+                if (limit.isMobileEnabled()) {
                     Spacer(modifier = Modifier.height(20.dp))
                     
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -871,6 +871,88 @@ fun AppLimitItem(
                             )
                             Text(
                                 text = " / ${formatUsage(limit.mobileDataLimit)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(bottom = 1.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (limit.isFourGEnabled()) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Rounded.SignalCellularAlt,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.label_four_g),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    val fourGProgress = if (limit.dataLimit > 0) (limit.currentUsage.toFloat() / limit.dataLimit).coerceIn(0f, 1f) else 0f
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(fourGProgress)
+                                .background(
+                                    color = if (limit.dataLimit > 0 && limit.currentUsage >= limit.dataLimit) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                    shape = CircleShape
+                                )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = if (limit.dataLimit > 0 && limit.currentUsage >= limit.dataLimit) MaterialTheme.colorScheme.errorContainer
+                                            else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "${(fourGProgress * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (limit.dataLimit > 0 && limit.currentUsage >= limit.dataLimit) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = formatUsage(limit.currentUsage),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = " / ${formatUsage(limit.dataLimit)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Medium,
