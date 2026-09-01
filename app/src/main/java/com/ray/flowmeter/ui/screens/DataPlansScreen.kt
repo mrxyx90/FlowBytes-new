@@ -1177,7 +1177,7 @@ fun AppLimitItem(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (limit.isManuallyBlocked) "Blocked" else "Block Internet",
+                        text = if (limit.isManuallyBlocked) "Blocked" else "Block",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
                     )
