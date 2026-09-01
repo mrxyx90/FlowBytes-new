@@ -103,6 +103,7 @@ class NetworkMonitoringService : Service() {
     private var lastUsageQueryTime: Long = 0
     private var lastDailyResetStartTime: Long = 0
     private var lastAppLimitCheckTime: Long = 0
+    private var lastActiveLimitCheckTime: Long = 0
 
     private var isCurrentlyOn4G = false
     private var needs4GRefresh = true
@@ -393,11 +394,18 @@ class NetworkMonitoringService : Service() {
                     // We don't block the UI update for these.
                     launch { trackFourGSession() }
                     
-                    // Only check app limits every 30 seconds to avoid system-level lag
-                    if ((loopStartTime - lastAppLimitCheckTime) > 30000L) {
+                    // 1. Check ALL app limits (including 0MB/Blocked) every 15 seconds to update usage stats
+                    if ((loopStartTime - lastAppLimitCheckTime) > 15000L) {
                         launch { 
-                            checkAppLimits()
+                            checkAppLimits(onlyNumeric = false)
                             lastAppLimitCheckTime = System.currentTimeMillis()
+                        }
+                    } 
+                    // 2. Check apps with ACTIVE numeric limits every 3 seconds for fast enforcement
+                    else if ((loopStartTime - lastActiveLimitCheckTime) > 3000L) {
+                        launch {
+                            checkAppLimits(onlyNumeric = true)
+                            lastActiveLimitCheckTime = System.currentTimeMillis()
                         }
                     }
 
@@ -1382,8 +1390,21 @@ class NetworkMonitoringService : Service() {
         }
     }
 
-    private suspend fun checkAppLimits() = coroutineScope {
-        val limits = appLimitRepository.getAllAppLimitsList()
+    private suspend fun checkAppLimits(onlyNumeric: Boolean = false) = coroutineScope {
+        var limits = appLimitRepository.getAllAppLimitsList()
+        
+        if (onlyNumeric) {
+            // Only fetch usage for apps that have a numeric limit (> 0) that can be "exceeded"
+            limits = limits.filter { limit ->
+                val hasActiveNumericLimit = 
+                    (limit.isWifiEnabled() && limit.wifiDataLimit > 0L) ||
+                    (limit.isMobileEnabled() && limit.mobileDataLimit > 0L) ||
+                    (limit.isFourGEnabled() && limit.dataLimit > 0L)
+                
+                limit.isEnabled && !limit.isManuallyBlocked && hasActiveNumericLimit
+            }
+        }
+        
         if (limits.isEmpty()) return@coroutineScope
 
         val networkStatsManager = getSystemService(NetworkStatsManager::class.java) ?: return@coroutineScope
