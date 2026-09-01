@@ -607,7 +607,7 @@ fun AppLimitItem(
             ) {
                 if (appIcon != null) {
                     Image(
-                        bitmap = appIcon.toBitmap().asImageBitmap(),
+                        bitmap = appIcon.toBitmap(120, 120).asImageBitmap(),
                         contentDescription = null,
                         modifier = Modifier
                             .size(44.dp)

@@ -525,7 +525,7 @@ class AppUsageViewModel(
                 
                 val icon = synchronized(iconCache) {
                     iconCache.getOrPut(pkg) {
-                        packageManager.getApplicationIcon(appInfo).toBitmap().asImageBitmap()
+                        packageManager.getApplicationIcon(appInfo).toBitmap(120, 120).asImageBitmap()
                     }
                 }
 
@@ -606,7 +606,7 @@ class AppUsageViewModel(
             val appInfo = packageManager.getApplicationInfo("android", 0)
             synchronized(iconCache) {
                 iconCache.getOrPut("android") {
-                    packageManager.getApplicationIcon(appInfo).toBitmap().asImageBitmap()
+                    packageManager.getApplicationIcon(appInfo).toBitmap(120, 120).asImageBitmap()
                 }
             }
         } catch (_: Exception) {
@@ -684,7 +684,7 @@ class AppUsageViewModel(
         if (totalSystemUsage > 0) {
             val systemIcon = try {
                 val appInfo = packageManager.getApplicationInfo("android", 0)
-                packageManager.getApplicationIcon(appInfo).toBitmap().asImageBitmap()
+                packageManager.getApplicationIcon(appInfo).toBitmap(120, 120).asImageBitmap()
             } catch (_: Exception) { null }
 
             val systemGroup = AppUsageInfo(

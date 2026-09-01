@@ -2,7 +2,6 @@
 // Lists installed packages with filtering and search capabilities.
 package com.ray.flowmeter.ui.screens
 
-import android.graphics.drawable.Drawable
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -20,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -173,7 +173,7 @@ fun AppPickerScreen(
                                 contentPadding = PaddingValues(bottom = 100.dp)
                             ) {
                                 itemsIndexed(filtered, key = { _, it -> it.packageName }) { index, app ->
-                                    val appIcon by produceState<Drawable?>(
+                                    val appIcon by produceState<ImageBitmap?>(
                                         initialValue = null,
                                         key1 = app.packageName
                                     ) {
@@ -206,7 +206,7 @@ fun AppPickerScreen(
                                                     Box(modifier = Modifier.padding(8.dp)) {
                                                         if (appIcon != null) {
                                                             Image(
-                                                                bitmap = appIcon!!.toBitmap().asImageBitmap(),
+                                                                bitmap = appIcon!!,
                                                                 contentDescription = null,
                                                                 modifier = Modifier.fillMaxSize()
                                                             )
@@ -756,7 +756,7 @@ fun BatchConfigurationContent(
             val context = LocalContext.current
             val appIcon = remember(app.packageName) {
                 try {
-                    context.packageManager.getApplicationIcon(app.packageName)
+                    context.packageManager.getApplicationIcon(app.packageName).toBitmap(120, 120).asImageBitmap()
                 } catch (_: Exception) {
                     null
                 }
@@ -772,7 +772,7 @@ fun BatchConfigurationContent(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
+                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier.size(36.dp)
@@ -780,7 +780,7 @@ fun BatchConfigurationContent(
                             Box(Modifier.padding(6.dp)) {
                                 if (appIcon != null) {
                                     Image(
-                                        bitmap = appIcon.toBitmap().asImageBitmap(),
+                                        bitmap = appIcon,
                                         contentDescription = null,
                                         modifier = Modifier.fillMaxSize()
                                     )
@@ -1000,7 +1000,7 @@ fun ConfigurationContent(
             val context = LocalContext.current
             val appIcon = remember(selectedApp.packageName) {
                 try {
-                    context.packageManager.getApplicationIcon(selectedApp.packageName)
+                    context.packageManager.getApplicationIcon(selectedApp.packageName).toBitmap(120, 120).asImageBitmap()
                 } catch (_: Exception) {
                     null
                 }
@@ -1015,7 +1015,7 @@ fun ConfigurationContent(
                     Box(Modifier.padding(10.dp)) {
                         if (appIcon != null) {
                             Image(
-                                bitmap = appIcon.toBitmap().asImageBitmap(),
+                                bitmap = appIcon,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize()
                             )

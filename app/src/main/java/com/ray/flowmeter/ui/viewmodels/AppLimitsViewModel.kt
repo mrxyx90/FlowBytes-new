@@ -22,7 +22,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import android.graphics.drawable.Drawable
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
 import kotlin.time.Duration.Companion.milliseconds
 import java.util.concurrent.ConcurrentHashMap
 
@@ -300,14 +302,14 @@ class AppLimitsViewModel(
         }
     }
 
-    private val iconCache = ConcurrentHashMap<String, Drawable>()
+    private val iconCache = ConcurrentHashMap<String, ImageBitmap>()
 
-    suspend fun getAppIcon(packageName: String): Drawable? {
+    suspend fun getAppIcon(packageName: String): ImageBitmap? {
         iconCache[packageName]?.let { return it }
         return withContext(Dispatchers.IO) {
             try {
                 val pm = applicationContext.packageManager
-                val icon = pm.getApplicationIcon(packageName)
+                val icon = pm.getApplicationIcon(packageName).toBitmap(120, 120).asImageBitmap()
                 iconCache[packageName] = icon
                 icon
             } catch (_: Exception) {

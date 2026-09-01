@@ -136,12 +136,16 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         // Lay out UI components edge-to-edge behind system status/navigation bars.
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         val repository = UserPreferencesRepository(applicationContext)
+
+        // Keep the splash screen visible until theme settings are loaded to prevent content overlap.
+        var isReady = false
+        splashScreen.setKeepOnScreenCondition { !isReady }
         appUpdateHelper = AppUpdateHelper(this, repository)
         if (appUpdateHelper.getInstallerPackageName(this) == "com.android.vending") {
             val manager = AppUpdateManagerFactory.create(this)
@@ -173,6 +177,7 @@ class MainActivity : ComponentActivity() {
                 val useAmoled = repository.useAmoled.first()
                 val accentColor = repository.accentColor.first()
                 value = ThemeSettings(themeMode, useMaterialYou, useAmoled, accentColor)
+                isReady = true
             }
 
             val settings = themeSettingsState.value

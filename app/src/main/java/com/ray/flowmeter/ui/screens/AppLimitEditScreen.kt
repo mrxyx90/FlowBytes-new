@@ -105,7 +105,7 @@ fun AppLimitEditScreen(
                                 Box(Modifier.padding(10.dp)) {
                                     appIcon?.let {
                                         Image(
-                                            bitmap = it.toBitmap().asImageBitmap(),
+                                            bitmap = it.toBitmap(120, 120).asImageBitmap(),
                                             contentDescription = null,
                                             modifier = Modifier.fillMaxSize(),
                                         )
