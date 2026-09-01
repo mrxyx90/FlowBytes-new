@@ -120,13 +120,13 @@ fun OnboardingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             StaggeredEntrance(index = 0) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(220.dp),
+                        .height(200.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Surface(
