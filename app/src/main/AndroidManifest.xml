@@ -59,7 +59,11 @@
             android:enabled="true"
             android:exported="false"
             android:permission="android.permission.BIND_VPN_SERVICE"
+            android:foregroundServiceType="specialUse"
             tools:ignore="VpnService">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_TYPE"
+                android:value="VPN service to block app traffic based on data usage limits." />
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>
