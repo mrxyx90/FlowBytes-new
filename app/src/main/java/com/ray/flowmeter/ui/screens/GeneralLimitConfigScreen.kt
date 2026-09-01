@@ -122,6 +122,7 @@ fun GeneralLimitConfigScreen(
     }
     val networkText = when {
         planType.endsWith("wifi") -> stringResource(R.string.label_wifi)
+        planType.endsWith("four_g") -> stringResource(R.string.label_four_g)
         else -> stringResource(R.string.label_mobile)
     }
     val titleText = "$periodText $networkText"

@@ -13,6 +13,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ray.flowmeter.data.AppLimit
 import com.ray.flowmeter.data.AppLimitRepository
+import com.ray.flowmeter.data.FourGSessionRepository
+import com.ray.flowmeter.data.FlowMeterDatabase
 import com.ray.flowmeter.data.UserPreferencesRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -46,6 +48,9 @@ class AppLimitsViewModel(
     val wifiMonthlyLimitConfigured: StateFlow<Boolean> = preferencesRepository.wifiMonthlyLimitConfigured
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = false)
 
+    val fourGDailyLimitConfigured: StateFlow<Boolean> = preferencesRepository.fourGDailyLimitConfigured
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = false)
+
     val dataDailyLimitEnabled: StateFlow<Boolean> = preferencesRepository.dataDailyLimitEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = false)
 
@@ -58,11 +63,17 @@ class AppLimitsViewModel(
     val wifiMonthlyLimitEnabled: StateFlow<Boolean> = preferencesRepository.wifiMonthlyLimitEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = false)
 
+    val fourGDailyLimitEnabled: StateFlow<Boolean> = preferencesRepository.fourGDailyLimitEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = false)
+
     val dataDailyLimit: StateFlow<Long> = preferencesRepository.dataDailyLimit
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 2_147_483_648L)
 
     val wifiDailyLimit: StateFlow<Long> = preferencesRepository.wifiDailyLimit
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5_368_709_120L)
+
+    val fourGDailyLimit: StateFlow<Long> = preferencesRepository.fourGDailyLimit
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 2_147_483_648L)
 
     val dataMonthlyLimit: StateFlow<Long> = preferencesRepository.dataMonthlyLimit
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 53_687_091_200L)
@@ -109,6 +120,9 @@ class AppLimitsViewModel(
     private val _currentWifiUsage = MutableStateFlow(0L)
     val currentWifiUsage: StateFlow<Long> = _currentWifiUsage.asStateFlow()
 
+    private val _currentFourGDailyUsage = MutableStateFlow(0L)
+    val currentFourGDailyUsage: StateFlow<Long> = _currentFourGDailyUsage.asStateFlow()
+
     private val _currentMonthlyMobileUsage = MutableStateFlow(0L)
     val currentMonthlyMobileUsage: StateFlow<Long> = _currentMonthlyMobileUsage.asStateFlow()
 
@@ -122,6 +136,10 @@ class AppLimitsViewModel(
     val currentCustomWifiUsage: StateFlow<Long> = _currentCustomWifiUsage.asStateFlow()
 
     private var usageJob: Job? = null
+
+    private val fourGRepository: FourGSessionRepository by lazy {
+        FourGSessionRepository(FlowMeterDatabase.getDatabase(applicationContext).fourGSessionDao())
+    }
 
     private var monthlyResetDay = 1
 
@@ -160,6 +178,7 @@ class AppLimitsViewModel(
         
         _currentMobileUsage.value = usage.dailyMobile
         _currentWifiUsage.value = usage.dailyWifi
+        _currentFourGDailyUsage.value = usage.dailyFourG
         _currentMonthlyMobileUsage.value = usage.monthlyMobile
         _currentMonthlyWifiUsage.value = usage.monthlyWifi
         _currentCustomMobileUsage.value = usage.customMobile
@@ -169,13 +188,14 @@ class AppLimitsViewModel(
     data class DeviceUsage(
         val dailyMobile: Long,
         val dailyWifi: Long,
+        val dailyFourG: Long,
         val monthlyMobile: Long,
         val monthlyWifi: Long,
         val customMobile: Long,
         val customWifi: Long,
     )
 
-    private fun getDeviceUsage(
+    private suspend fun getDeviceUsage(
         resetHour: Int,
         resetMinute: Int,
         dataCustomStart: Long,
@@ -201,9 +221,29 @@ class AppLimitsViewModel(
             return NetworkStatsUtils.getDeviceTotalUsage(nsm, transport, queryStart, queryEnd)
         }
 
+        val startDaily = getStartTime("daily")
+        val sessions = fourGRepository.getSessionsInRange(startDaily, endTime)
+        var totalFourG = 0L
+        for (session in sessions) {
+            val s = maxOf(startDaily, session.startTime)
+            val e = if (session.closed) {
+                minOf(endTime, session.endTime)
+            } else {
+                minOf(endTime, endTime) // Same as endTime
+            }
+            if (e > s) {
+                totalFourG += if (session.closed && s == session.startTime && e == session.endTime) {
+                    session.usageBytes
+                } else {
+                    NetworkStatsUtils.getDeviceTotalUsage(nsm, NetworkCapabilities.TRANSPORT_CELLULAR, s, e)
+                }
+            }
+        }
+
         return DeviceUsage(
             dailyMobile = sumUsage(NetworkCapabilities.TRANSPORT_CELLULAR, "daily"),
             dailyWifi = sumUsage(NetworkCapabilities.TRANSPORT_WIFI, "daily"),
+            dailyFourG = totalFourG,
             monthlyMobile = sumUsage(NetworkCapabilities.TRANSPORT_CELLULAR, "monthly"),
             monthlyWifi = sumUsage(NetworkCapabilities.TRANSPORT_WIFI, "monthly"),
             customMobile = sumCustomUsage(NetworkCapabilities.TRANSPORT_CELLULAR, dataCustomStart, dataCustomEnd),
@@ -316,6 +356,10 @@ class AppLimitsViewModel(
         viewModelScope.launch { preferencesRepository.setDataDailyLimitConfigured(configured) }
     }
 
+    fun setFourGDailyLimitConfigured(configured: Boolean) {
+        viewModelScope.launch { preferencesRepository.setFourGDailyLimitConfigured(configured) }
+    }
+
     fun setDataMonthlyLimitConfigured(configured: Boolean) {
         viewModelScope.launch { preferencesRepository.setDataMonthlyLimitConfigured(configured) }
     }
@@ -332,6 +376,10 @@ class AppLimitsViewModel(
         viewModelScope.launch { preferencesRepository.setDataDailyLimitEnabled(enabled) }
     }
 
+    fun setFourGDailyLimitEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setFourGDailyLimitEnabled(enabled) }
+    }
+
     fun setDataMonthlyLimitEnabled(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setDataMonthlyLimitEnabled(enabled) }
     }
@@ -346,6 +394,10 @@ class AppLimitsViewModel(
 
     fun setDataDailyLimit(limitBytes: Long) {
         viewModelScope.launch { preferencesRepository.setDataDailyLimit(limitBytes) }
+    }
+
+    fun setFourGDailyLimit(limitBytes: Long) {
+        viewModelScope.launch { preferencesRepository.setFourGDailyLimit(limitBytes) }
     }
 
     fun setWifiDailyLimit(limitBytes: Long) {

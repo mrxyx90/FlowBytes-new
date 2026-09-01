@@ -361,6 +361,8 @@
     <string name="label_monthly_mobile_limit">Monthly Mobile Limit</string>
     <string name="label_custom_wifi_limit">Custom Wi-Fi Limit</string>
     <string name="label_custom_mobile_limit">Custom Mobile Limit</string>
+    <string name="label_daily_four_g_limit">Daily 4G Limit</string>
+    <string name="label_daily_four_g">Daily 4G</string>
     <string name="label_unknown">Unknown</string>
     <string name="desc_configure_limit_format">Configure limit for your %1$s plan.</string>
     <string name="label_select_date">Select Date</string>

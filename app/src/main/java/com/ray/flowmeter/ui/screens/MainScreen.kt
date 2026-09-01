@@ -124,18 +124,17 @@ fun MainScreen(
     }
 
     BackHandler(enabled = (currentDestination != Destination.Home)) {
-        if (currentDestination == Destination.AppPicker) {
-            appLimitsViewModel.isPickerOpen = false
-        } else if (currentDestination == Destination.Widgets) {
-            homeViewModel.isWidgetsOpen = false
-        } else {
-            backStack.clear()
-            backStack.add(Destination.Home)
+        when (currentDestination) {
+            Destination.AppPicker -> appLimitsViewModel.isPickerOpen = false
+            Destination.Widgets -> homeViewModel.isWidgetsOpen = false
+            else -> {
+                backStack.clear()
+                backStack.add(Destination.Home)
+            }
         }
     }
 
-    val snackbarHostState = remember { SnackbarHostState() }
-    val (limitsTab, setLimitsTab) = remember { mutableIntStateOf(0) }
+    val hostState = remember { SnackbarHostState() }
     val showUsageFilters by appUsageViewModel.showFilters.collectAsState()
     var showAlertsFilters by remember { mutableStateOf(false) }
 
@@ -160,10 +159,10 @@ fun MainScreen(
                     showDonateDialog = true
                 }
                 is BillingEvent.Cancelled -> {
-                    snackbarHostState.showSnackbar(donationCancelledMessage)
+                    hostState.showSnackbar(donationCancelledMessage)
                 }
                 is BillingEvent.Error -> {
-                    snackbarHostState.showSnackbar(String.format(locale, donationFailedMessage, event.message))
+                    hostState.showSnackbar(String.format(locale, donationFailedMessage, event.message))
                 }
             }
         }
@@ -182,7 +181,7 @@ fun MainScreen(
             if ((System.currentTimeMillis() - firstInstallTime).milliseconds >= threeDays) {
                 delay(3.seconds)
                 settingsViewModel.dismissSupportBanner()
-                val result = snackbarHostState.showSnackbar(
+                val result = hostState.showSnackbar(
                     message = supportPromptMessage,
                     actionLabel = supportPromptAction,
                     duration = SnackbarDuration.Long
@@ -332,7 +331,7 @@ fun MainScreen(
 
             Scaffold(
                 modifier = Modifier.weight(1f),
-                snackbarHost = { SnackbarHost(snackbarHostState) },
+                snackbarHost = { SnackbarHost(hostState) },
                 topBar = {
                 val showGlobalTopBar = activeLayoutDestination != Destination.AppPicker && activeLayoutDestination != Destination.Widgets
                 if (showGlobalTopBar) {
@@ -446,7 +445,7 @@ fun MainScreen(
                                             targetValue = if (appBlockingMasterEnabled) MaterialTheme.colorScheme.primaryContainer
                                                           else Color.Transparent,
                                             animationSpec = tween(300),
-                                            label = "FirewallBgColor"
+                                            label = "FirewallBackgroundColor"
                                         )
                                         val buttonContentColor by animateColorAsState(
                                             targetValue = if (appBlockingMasterEnabled) MaterialTheme.colorScheme.onPrimaryContainer
@@ -460,10 +459,10 @@ fun MainScreen(
                                                 val targetState = !appBlockingMasterEnabled
                                                 appLimitsViewModel.setAppBlockingMasterEnabled(targetState)
                                                 scope.launch {
-                                                    snackbarHostState.currentSnackbarData?.dismiss()
+                                                    hostState.currentSnackbarData?.dismiss()
                                                     val msg = if (targetState) firewallEnabledMsg else firewallDisabledMsg
                                                     val job = launch {
-                                                        snackbarHostState.showSnackbar(
+                                                        hostState.showSnackbar(
                                                             message = msg,
                                                             duration = SnackbarDuration.Indefinite
                                                         )
@@ -729,8 +728,6 @@ fun MainScreen(
                         Destination.Limits -> NavEntry(key) {
                             AppLimitsScreen(
                                 viewModel = appLimitsViewModel,
-                                currentTab = limitsTab,
-                                onTabChange = setLimitsTab,
                                 modifier = Modifier.fillMaxSize().padding(lastStablePadding).nestedScroll(limitsScrollBehavior.nestedScrollConnection)
                             )
                         }

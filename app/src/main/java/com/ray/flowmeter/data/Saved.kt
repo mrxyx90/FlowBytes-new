@@ -228,14 +228,17 @@ class UserPreferencesRepository(private val context: Context) {
         val NOTIFICATION_CONTENT_TYPE = stringPreferencesKey("notification_content_type")
         val DATA_DAILY_LIMIT_CONFIGURED = booleanPreferencesKey("data_daily_limit_configured")
         val DATA_MONTHLY_LIMIT_CONFIGURED = booleanPreferencesKey("data_monthly_limit_configured")
+        val FOUR_G_DAILY_LIMIT_CONFIGURED = booleanPreferencesKey("four_g_daily_limit_configured")
         val WIFI_DAILY_LIMIT_CONFIGURED = booleanPreferencesKey("wifi_daily_limit_configured")
         val WIFI_MONTHLY_LIMIT_CONFIGURED = booleanPreferencesKey("wifi_monthly_limit_configured")
 
         val DATA_DAILY_LIMIT_ENABLED = booleanPreferencesKey("data_daily_limit_enabled")
         val DATA_MONTHLY_LIMIT_ENABLED = booleanPreferencesKey("data_monthly_limit_enabled")
+        val FOUR_G_DAILY_LIMIT_ENABLED = booleanPreferencesKey("four_g_daily_limit_enabled")
         val WIFI_DAILY_LIMIT_ENABLED = booleanPreferencesKey("wifi_daily_limit_enabled")
         val WIFI_MONTHLY_LIMIT_ENABLED = booleanPreferencesKey("wifi_monthly_limit_enabled")
         val DATA_DAILY_LIMIT = longPreferencesKey("data_daily_limit")
+        val FOUR_G_DAILY_LIMIT = longPreferencesKey("four_g_daily_limit")
         val WIFI_DAILY_LIMIT = longPreferencesKey("wifi_daily_limit")
         val DATA_MONTHLY_LIMIT = longPreferencesKey("data_monthly_limit")
         val WIFI_MONTHLY_LIMIT = longPreferencesKey("wifi_monthly_limit")
@@ -357,6 +360,11 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.DATA_MONTHLY_LIMIT_CONFIGURED] ?: false
         }.distinctUntilChanged()
 
+    val fourGDailyLimitConfigured: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.FOUR_G_DAILY_LIMIT_CONFIGURED] ?: false
+        }.distinctUntilChanged()
+
     val wifiDailyLimitConfigured: Flow<Boolean> = preferencesFlow
         .map { preferences ->
             preferences[PreferencesKeys.WIFI_DAILY_LIMIT_CONFIGURED] ?: false
@@ -375,6 +383,11 @@ class UserPreferencesRepository(private val context: Context) {
     val dataMonthlyLimitEnabled: Flow<Boolean> = preferencesFlow
         .map { preferences ->
             preferences[PreferencesKeys.DATA_MONTHLY_LIMIT_ENABLED] ?: false
+        }.distinctUntilChanged()
+
+    val fourGDailyLimitEnabled: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.FOUR_G_DAILY_LIMIT_ENABLED] ?: false
         }.distinctUntilChanged()
 
     val wifiDailyLimitEnabled: Flow<Boolean> = preferencesFlow
@@ -410,6 +423,11 @@ class UserPreferencesRepository(private val context: Context) {
     val dataDailyLimit: Flow<Long> = preferencesFlow
         .map { preferences ->
             preferences[PreferencesKeys.DATA_DAILY_LIMIT] ?: 2_147_483_648L
+        }.distinctUntilChanged()
+
+    val fourGDailyLimit: Flow<Long> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.FOUR_G_DAILY_LIMIT] ?: 2_147_483_648L
         }.distinctUntilChanged()
 
     val wifiDailyLimit: Flow<Long> = preferencesFlow
@@ -693,6 +711,12 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun setFourGDailyLimitConfigured(configured: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.FOUR_G_DAILY_LIMIT_CONFIGURED] = configured
+        }
+    }
+
     suspend fun setWifiDailyLimitConfigured(configured: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.WIFI_DAILY_LIMIT_CONFIGURED] = configured
@@ -714,6 +738,12 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setDataMonthlyLimitEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.DATA_MONTHLY_LIMIT_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setFourGDailyLimitEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.FOUR_G_DAILY_LIMIT_ENABLED] = enabled
         }
     }
 
@@ -756,6 +786,12 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setDataDailyLimit(limitBytes: Long) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.DATA_DAILY_LIMIT] = limitBytes
+        }
+    }
+
+    suspend fun setFourGDailyLimit(limitBytes: Long) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.FOUR_G_DAILY_LIMIT] = limitBytes
         }
     }
 

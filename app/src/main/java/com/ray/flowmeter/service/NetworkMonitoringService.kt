@@ -134,6 +134,7 @@ class NetworkMonitoringService : Service() {
 
     private var hasAlertedData = false
     private var hasAlertedWifi = false
+    private var hasAlertedFourGData = false
     private var hasAlertedMonthlyData = false
     private var hasAlertedMonthlyWifi = false
     private var hasAlertedCustomData = false
@@ -599,6 +600,16 @@ class NetworkMonitoringService : Service() {
             hasAlertedData = false
         }
 
+        // 1b. Check Daily 4G
+        val fourGDailyEnabled = repository.fourGDailyLimitEnabled.first()
+        val fourGDailyLimit = repository.fourGDailyLimit.first()
+        if (fourGDailyEnabled && (cachedDailyFourGUsage > fourGDailyLimit) && !hasAlertedFourGData) {
+            sendLimitAlert("four_g", cachedDailyFourGUsage, "daily", fourGDailyLimit)
+            hasAlertedFourGData = true
+        } else if (cachedDailyFourGUsage < fourGDailyLimit) {
+            hasAlertedFourGData = false
+        }
+
         // 2. Check Monthly Mobile
         if (dataMonthlyEnabled && (cachedMonthlyMobileUsage > dataMonthlyLimit) && !hasAlertedMonthlyData) {
             sendLimitAlert("mobile", cachedMonthlyMobileUsage, "monthly", dataMonthlyLimit)
@@ -656,6 +667,7 @@ class NetworkMonitoringService : Service() {
             networkType == "wifi" && period == "daily" -> getString(R.string.label_daily_wifi_limit)
             networkType == "wifi" && period == "monthly" -> getString(R.string.label_monthly_wifi_limit)
             networkType == "wifi" -> getString(R.string.label_custom_wifi_limit)
+            networkType == "four_g" && period == "daily" -> getString(R.string.label_daily_four_g_limit)
             period == "daily" -> getString(R.string.label_daily_mobile_limit)
             period == "monthly" -> getString(R.string.label_monthly_mobile_limit)
             else -> getString(R.string.label_custom_mobile_limit)
@@ -690,7 +702,11 @@ class NetworkMonitoringService : Service() {
             "monthly" -> getString(R.string.filter_monthly).lowercase()
             else -> getString(R.string.filter_custom).lowercase()
         }
-        val typeLabel = if (networkType == "wifi") getString(R.string.label_wifi) else getString(R.string.label_mobile)
+        val typeLabel = when (networkType) {
+            "wifi" -> getString(R.string.label_wifi)
+            "four_g" -> getString(R.string.label_four_g)
+            else -> getString(R.string.label_mobile)
+        }
         val message = getString(R.string.msg_reached_limit, periodLabel, typeLabel, formatDataUsage(currentUsage))
 
         val title = when (period) {
