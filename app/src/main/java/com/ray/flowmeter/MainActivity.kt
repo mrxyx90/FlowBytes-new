@@ -170,18 +170,19 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val (gitHubUpdate, setGitHubUpdate) = remember { mutableStateOf<UpdateResult.GitHubUpdateAvailable?>(null) }
-            // Load user theme preferences asynchronously before rendering the app theme.
-            val themeSettingsState = produceState<ThemeSettings?>(initialValue = null) {
+            // Load user theme preferences and onboarding state asynchronously before rendering.
+            val startupStateState = produceState<AppStartupState?>(initialValue = null) {
                 val themeMode = repository.themeMode.first()
                 val useMaterialYou = repository.useMaterialYou.first()
                 val useAmoled = repository.useAmoled.first()
                 val accentColor = repository.accentColor.first()
-                value = ThemeSettings(themeMode, useMaterialYou, useAmoled, accentColor)
+                val onboardingCompleted = repository.onboardingCompleted.first()
+                value = AppStartupState(themeMode, useMaterialYou, useAmoled, accentColor, onboardingCompleted)
                 isReady = true
             }
 
-            val settings = themeSettingsState.value
-            if (settings == null) {
+            val startupState = startupStateState.value
+            if (startupState == null) {
                 // Show a matching blank background during the brief preference loading phase to prevent screen flash.
                 val isDark = isSystemInDarkTheme()
                 Box(
@@ -205,7 +206,7 @@ class MainActivity : ComponentActivity() {
                     )[OnboardingViewModel::class.java]
                 }
 
-                val settingsViewModel = remember(settings) {
+                val settingsViewModel = remember(startupState) {
                     ViewModelProvider(
                         this@MainActivity,
                         object : ViewModelProvider.Factory {
@@ -213,10 +214,10 @@ class MainActivity : ComponentActivity() {
                                 @Suppress("UNCHECKED_CAST")
                                 return SettingsViewModel(
                                     repository = repository,
-                                    initialTheme = settings.themeMode,
-                                    initialMaterialYou = settings.useMaterialYou,
-                                    initialAMOLED = settings.useAmoled,
-                                    initialAccent = settings.accentColor
+                                    initialTheme = startupState.themeMode,
+                                    initialMaterialYou = startupState.useMaterialYou,
+                                    initialAMOLED = startupState.useAmoled,
+                                    initialAccent = startupState.accentColor
                                 ) as T
                             }
                         },
@@ -276,7 +277,9 @@ class MainActivity : ComponentActivity() {
                 val useMaterialYou by settingsViewModel.useMaterialYou.collectAsState()
                 val useAMOLED by settingsViewModel.useAMOLED.collectAsState()
                 val accentColor by settingsViewModel.accentColor.collectAsState()
-                val onboardingCompleted by repository.onboardingCompleted.collectAsState(false)
+                val onboardingCompletedFromFlow by repository.onboardingCompleted.collectAsState(startupState.onboardingCompleted)
+                
+                val onboardingCompleted = onboardingCompletedFromFlow
 
                 val currentContext = LocalContext.current
                 val localizedContext = remember(languageCode, currentContext) {
@@ -524,9 +527,10 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private data class ThemeSettings(
+private data class AppStartupState(
     val themeMode: String,
     val useMaterialYou: Boolean,
     val useAmoled: Boolean,
-    val accentColor: Long?
+    val accentColor: Long?,
+    val onboardingCompleted: Boolean
 )
