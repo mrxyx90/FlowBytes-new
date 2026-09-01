@@ -137,7 +137,7 @@ fun MainScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val (limitsTab, setLimitsTab) = remember { mutableIntStateOf(0) }
-    var showUsageFilters by remember { mutableStateOf(false) }
+    val showUsageFilters by appUsageViewModel.showFilters.collectAsState()
     var showAlertsFilters by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -409,7 +409,7 @@ fun MainScreen(
 
                                     if (activeLayoutDestination == Destination.Usage) {
                                         IconButton(
-                                            onClick = { showUsageFilters = !showUsageFilters },
+                                            onClick = { appUsageViewModel.setShowFilters(!showUsageFilters) },
                                             colors = IconButtonDefaults.iconButtonColors(
                                                 containerColor = Color.Transparent
                                             )

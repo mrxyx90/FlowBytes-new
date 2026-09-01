@@ -288,6 +288,7 @@ class UserPreferencesRepository(private val context: Context) {
         val LAST_UPDATE_CHECK_TIME = longPreferencesKey("last_update_check_time")
         val IGNORED_UPDATE_VERSION = stringPreferencesKey("ignored_update_version")
         val SPEED_UNIT = stringPreferencesKey("speed_unit")
+        val SHOW_USAGE_FILTERS = booleanPreferencesKey("show_usage_filters")
     }
 
     private val preferencesFlow = context.dataStore.data
@@ -621,6 +622,11 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.SPEED_UNIT] ?: "BYTES"
         }.distinctUntilChanged()
 
+    val showUsageFilters: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.SHOW_USAGE_FILTERS] ?: false
+        }.distinctUntilChanged()
+
     // --- Preferences Write Operations ---
 
     suspend fun setOnboardingCompleted(completed: Boolean) {
@@ -896,6 +902,12 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun saveAlertsCategory(category: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.ALERTS_CATEGORY] = category
+        }
+    }
+
+    suspend fun setShowUsageFilters(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SHOW_USAGE_FILTERS] = show
         }
     }
 

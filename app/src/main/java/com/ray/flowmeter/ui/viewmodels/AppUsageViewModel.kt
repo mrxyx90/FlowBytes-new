@@ -74,6 +74,9 @@ class AppUsageViewModel(
     val networkFilter: StateFlow<String> = repository.usageNetworkFilter
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "all")
 
+    val showFilters: StateFlow<Boolean> = repository.showUsageFilters
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     val filteredAppUsageList: StateFlow<List<AppUsageInfo>> = combine(
         _appUsageList,
         networkFilter,
@@ -189,6 +192,12 @@ class AppUsageViewModel(
     fun setNetworkFilter(filter: String) {
         viewModelScope.launch {
             repository.saveUsageNetworkFilter(filter)
+        }
+    }
+
+    fun setShowFilters(show: Boolean) {
+        viewModelScope.launch {
+            repository.setShowUsageFilters(show)
         }
     }
 
