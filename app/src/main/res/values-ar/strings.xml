@@ -401,7 +401,7 @@
     <string name="settings_check_updates_desc">تأكد من أن تطبيقك يعمل بأحدث إصدار</string>
     <string name="toast_app_up_to_date">FlowBytes محدث بالفعل!</string>
     <string name="toast_update_check_failed">فشل التحقق من وجود تحديثات. يرجى المحاولة لاحقًا.</string>
-    <string name="toast_checking_updates">جاري التحقق من وجود تحديثات...</string>
+    <string name="toast_checking_updates">جاري التحقق من وجود تحديثات&#8230;</string>
     <string name="snackbar_support_prompt">هل تستمتع بـ FlowBytes؟ ادعم تطويرنا الخالي من الإعلانات!</string>
     <string name="snackbar_support_action">دعم</string>
     <string name="title_custom_limit_widget">أداة حد الشبكة المخصصة</string>

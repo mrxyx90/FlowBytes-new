@@ -408,7 +408,7 @@
     <string name="settings_check_updates_desc">Uygulamanızın en son sürümü çalıştırdığından emin olun</string>
     <string name="toast_app_up_to_date">FlowBytes güncel!</string>
     <string name="toast_update_check_failed">Güncellemeler kontrol edilemedi. Lütfen daha sonra tekrar deneyin.</string>
-    <string name="toast_checking_updates">Güncellemeler kontrol ediliyor...</string>
+    <string name="toast_checking_updates">Güncellemeler kontrol ediliyor&#8230;</string>
 
     <!-- Strings extracted from Kotlin files -->
     <string name="msg_usage_stats_permission_disabled">Kullanım istatistikleri izni devre dışı. İzin vermek için dokunun.</string>

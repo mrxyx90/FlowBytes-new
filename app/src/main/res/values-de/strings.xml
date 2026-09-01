@@ -399,7 +399,7 @@
     <string name="settings_check_updates_desc">Sicherstellen, dass die neueste Version läuft</string>
     <string name="toast_app_up_to_date">FlowBytes ist auf dem neuesten Stand!</string>
     <string name="toast_update_check_failed">Fehler beim Suchen nach Updates. Bitte versuchen Sie es später noch einmal.</string>
-    <string name="toast_checking_updates">Suche nach Updates...</string>
+    <string name="toast_checking_updates">Suche nach Updates&#8230;</string>
     <string name="snackbar_support_prompt">Gefällt Ihnen FlowBytes? Unterstützen Sie unsere werbefreie Entwicklung!</string>
     <string name="snackbar_support_action">Unterstützen</string>
     <string name="title_custom_limit_widget">Widget für benutzerdefiniertes Netzwerklimit</string>

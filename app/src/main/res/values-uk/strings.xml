@@ -408,7 +408,7 @@
     <string name="settings_check_updates_desc">Переконайтеся, що ви використовуєте найновішу версію</string>
     <string name="toast_app_up_to_date">FlowBytes оновлено до найновішої версії!</string>
     <string name="toast_update_check_failed">Не вдалося перевірити оновлення. Спробуйте пізніше.</string>
-    <string name="toast_checking_updates">Перевірка оновлень...</string>
+    <string name="toast_checking_updates">Перевірка оновлень&#8230;</string>
 
     <!-- Strings extracted from Kotlin files -->
     <string name="msg_usage_stats_permission_disabled">Дозвіл на доступ до статистики вимкнено. Натисніть, щоб надати.</string>

@@ -399,7 +399,7 @@
     <string name="settings_check_updates_desc">アプリが最新バージョンであることを確認する</string>
     <string name="toast_app_up_to_date">FlowBytesは最新の状態です！</string>
     <string name="toast_update_check_failed">アップデートの確認に失敗しました。後で再試行してください。</string>
-    <string name="toast_checking_updates">アップデートを確認中...</string>
+    <string name="toast_checking_updates">アップデートを確認中&#8230;</string>
     <string name="snackbar_support_prompt">FlowBytesをお楽しみいただけていますか？広告なしの開発を支援してください！</string>
     <string name="snackbar_support_action">支援する</string>
     <string name="title_custom_limit_widget">カスタムネットワーク制限ウィジェット</string>

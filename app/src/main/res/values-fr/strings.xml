@@ -401,7 +401,7 @@
     <string name="settings_check_updates_desc">S\'assurer d\'utiliser la dernière version</string>
     <string name="toast_app_up_to_date">FlowBytes est à jour !</string>
     <string name="toast_update_check_failed">Échec de la vérification des mises à jour. Veuillez réessayer plus tard.</string>
-    <string name="toast_checking_updates">Recherche de mises à jour...</string>
+    <string name="toast_checking_updates">Recherche de mises à jour&#8230;</string>
     <string name="snackbar_support_prompt">Vous aimez FlowBytes ? Soutenez notre développement sans publicité !</string>
     <string name="snackbar_support_action">Soutenir</string>
     <string name="title_custom_limit_widget">Widget de limite réseau personnalisée</string>

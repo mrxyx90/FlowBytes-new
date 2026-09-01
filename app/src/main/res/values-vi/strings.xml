@@ -408,7 +408,7 @@
     <string name="settings_check_updates_desc">Đảm bảo ứng dụng của bạn luôn chạy phiên bản mới nhất</string>
     <string name="toast_app_up_to_date">FlowBytes đã là bản mới nhất!</string>
     <string name="toast_update_check_failed">Không thể kiểm tra bản cập nhật. Vui lòng thử lại sau.</string>
-    <string name="toast_checking_updates">Đang kiểm tra bản cập nhật...</string>
+    <string name="toast_checking_updates">Đang kiểm tra bản cập nhật&#8230;</string>
 
     <!-- Strings extracted from Kotlin files -->
     <string name="msg_usage_stats_permission_disabled">Quyền truy cập dữ liệu bị tắt. Nhấn để cấp quyền.</string>

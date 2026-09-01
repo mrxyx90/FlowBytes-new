@@ -399,7 +399,7 @@
     <string name="settings_check_updates_desc">Assicurati che l\'app sia all\'ultima versione</string>
     <string name="toast_app_up_to_date">FlowBytes è aggiornato!</string>
     <string name="toast_update_check_failed">Impossibile verificare gli aggiornamenti. Riprova più tardi.</string>
-    <string name="toast_checking_updates">Verifica aggiornamenti in corso...</string>
+    <string name="toast_checking_updates">Verifica aggiornamenti in corso&#8230;</string>
     <string name="snackbar_support_prompt">Ti piace FlowBytes? Supporta il nostro sviluppo senza pubblicità!</string>
     <string name="snackbar_support_action">Supporta</string>
     <string name="title_custom_limit_widget">Widget limite di rete personalizzato</string>

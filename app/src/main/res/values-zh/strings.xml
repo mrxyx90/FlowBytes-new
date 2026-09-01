@@ -399,7 +399,7 @@
     <string name="settings_check_updates_desc">确保您的应用运行的是最新版本</string>
     <string name="toast_app_up_to_date">FlowBytes 已是最新版本！</string>
     <string name="toast_update_check_failed">检查更新失败。请稍后再试。</string>
-    <string name="toast_checking_updates">正在检查更新...</string>
+    <string name="toast_checking_updates">正在检查更新&#8230;</string>
     <string name="snackbar_support_prompt">喜欢 FlowBytes 吗？支持我们的无广告开发！</string>
     <string name="snackbar_support_action">支持</string>
     <string name="title_custom_limit_widget">自定义网络限制小部件</string>
