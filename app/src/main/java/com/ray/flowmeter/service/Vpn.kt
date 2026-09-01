@@ -153,9 +153,9 @@ class AppBlockVpnService : VpnService() {
                     } else {
                         val blockedApps = limits.filter { limit ->
                             limit.isManuallyBlocked || (limit.isEnabled && (
-                                (limit.isWifiEnabled() && limit.isWifiBlocked && networkType == NetworkCapabilities.TRANSPORT_WIFI) ||
-                                (limit.isMobileEnabled() && limit.isMobileBlocked && networkType == NetworkCapabilities.TRANSPORT_CELLULAR) ||
-                                (limit.isFourGEnabled() && limit.isBlocked && networkType == NetworkCapabilities.TRANSPORT_CELLULAR && isOn4G)
+                                (limit.isWifiEnabled() && (limit.isWifiBlocked || limit.wifiDataLimit == 0L) && networkType == NetworkCapabilities.TRANSPORT_WIFI) ||
+                                (limit.isMobileEnabled() && (limit.isMobileBlocked || limit.mobileDataLimit == 0L) && networkType == NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                                (limit.isFourGEnabled() && (limit.isBlocked || limit.dataLimit == 0L) && networkType == NetworkCapabilities.TRANSPORT_CELLULAR && isOn4G)
                             ))
                         }.map { it.packageName }.toList()
                         VpnBlockConfig(blockAll = false, blockedApps = blockedApps)

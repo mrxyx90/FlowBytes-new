@@ -31,8 +31,12 @@ fun AppLimitEditScreen(
     onConfirm: (AppLimit) -> Unit,
 ) {
     val (limitInput, setLimitInput) = remember(limit) {
-        val mb = limit.dataLimit / (1024 * 1024)
-        mutableStateOf(if (((limit.dataLimit % (1024 * 1024 * 1024)) == 0L) && (limit.dataLimit > 0)) (limit.dataLimit / (1024 * 1024 * 1024)).toString() else mb.toString())
+        if (limit.dataLimit == 0L) {
+            mutableStateOf("100")
+        } else {
+            val mb = limit.dataLimit / (1024 * 1024)
+            mutableStateOf(if (((limit.dataLimit % (1024 * 1024 * 1024)) == 0L) && (limit.dataLimit > 0)) (limit.dataLimit / (1024 * 1024 * 1024)).toString() else mb.toString())
+        }
     }
     val (limitUnit, setLimitUnit) = remember(limit) {
         mutableStateOf(if ((limit.dataLimit >= 1024L * 1024L * 1024L) && (limit.dataLimit % (1024L * 1024L * 1024L) == 0L)) "GB" else "MB")
@@ -48,16 +52,24 @@ fun AppLimitEditScreen(
     }
 
     val (wifiLimitInput, setWifiLimitInput) = remember(limit) {
-        val mb = limit.wifiDataLimit / (1024 * 1024)
-        mutableStateOf(if (((limit.wifiDataLimit % (1024L * 1024L * 1024L)) == 0L) && (limit.wifiDataLimit > 0)) (limit.wifiDataLimit / (1024 * 1024 * 1024)).toString() else mb.toString())
+        if (limit.wifiDataLimit == 0L) {
+            mutableStateOf("100")
+        } else {
+            val mb = limit.wifiDataLimit / (1024 * 1024)
+            mutableStateOf(if (((limit.wifiDataLimit % (1024L * 1024L * 1024L)) == 0L) && (limit.wifiDataLimit > 0)) (limit.wifiDataLimit / (1024 * 1024 * 1024)).toString() else mb.toString())
+        }
     }
     val (wifiLimitUnit, setWifiLimitUnit) = remember(limit) {
         mutableStateOf(if ((limit.wifiDataLimit >= 1024L * 1024L * 1024L) && (limit.wifiDataLimit % (1024L * 1024L * 1024L) == 0L)) "GB" else "MB")
     }
 
     val (mobileLimitInput, setMobileLimitInput) = remember(limit) {
-        val mb = limit.mobileDataLimit / (1024 * 1024)
-        mutableStateOf(if (((limit.mobileDataLimit % (1024L * 1024L * 1024L)) == 0L) && (limit.mobileDataLimit > 0)) (limit.mobileDataLimit / (1024 * 1024 * 1024)).toString() else mb.toString())
+        if (limit.mobileDataLimit == 0L) {
+            mutableStateOf("100")
+        } else {
+            val mb = limit.mobileDataLimit / (1024 * 1024)
+            mutableStateOf(if (((limit.mobileDataLimit % (1024L * 1024L * 1024L)) == 0L) && (limit.mobileDataLimit > 0)) (limit.mobileDataLimit / (1024 * 1024 * 1024)).toString() else mb.toString())
+        }
     }
     val (mobileLimitUnit, setMobileLimitUnit) = remember(limit) {
         mutableStateOf(if ((limit.mobileDataLimit >= 1024L * 1024L * 1024L) && (limit.mobileDataLimit % (1024L * 1024L * 1024L) == 0L)) "GB" else "MB")
@@ -161,28 +173,32 @@ fun AppLimitEditScreen(
                     confirmButtonText = stringResource(R.string.btn_save_config),
                     onCancel = onBack,
                     onConfirm = {
-                        val value = limitInput.toLongOrNull() ?: 0L
-                        val multiplier = if (limitUnit == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
+                        if (networkType.isEmpty()) {
+                            android.widget.Toast.makeText(context, "${limit.appName} Limit not selected", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            val value = limitInput.toLongOrNull() ?: 0L
+                            val multiplier = if (limitUnit == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
 
-                        val wifiValue = wifiLimitInput.toLongOrNull() ?: 0L
-                        val wifiMultiplier = if (wifiLimitUnit == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
+                            val wifiValue = wifiLimitInput.toLongOrNull() ?: 0L
+                            val wifiMultiplier = if (wifiLimitUnit == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
 
-                        val mobileValue = mobileLimitInput.toLongOrNull() ?: 0L
-                        val mobileMultiplier = if (mobileLimitUnit == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
+                            val mobileValue = mobileLimitInput.toLongOrNull() ?: 0L
+                            val mobileMultiplier = if (mobileLimitUnit == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
 
-                        onConfirm(
-                            limit.copy(
-                                dataLimit = value * multiplier,
-                                limitType = limitType,
-                                networkType = networkType.joinToString(","),
-                                wifiDataLimit = wifiValue * wifiMultiplier,
-                                mobileDataLimit = mobileValue * mobileMultiplier,
-                                isBlocked = false,
-                                isWifiBlocked = false,
-                                isMobileBlocked = false,
-                                isManuallyBlocked = isManuallyBlocked,
+                            onConfirm(
+                                limit.copy(
+                                    dataLimit = value * multiplier,
+                                    limitType = limitType,
+                                    networkType = networkType.joinToString(","),
+                                    wifiDataLimit = wifiValue * wifiMultiplier,
+                                    mobileDataLimit = mobileValue * mobileMultiplier,
+                                    isBlocked = false,
+                                    isWifiBlocked = false,
+                                    isMobileBlocked = false,
+                                    isManuallyBlocked = isManuallyBlocked,
+                                )
                             )
-                        )
+                        }
                     }
                 )
             }

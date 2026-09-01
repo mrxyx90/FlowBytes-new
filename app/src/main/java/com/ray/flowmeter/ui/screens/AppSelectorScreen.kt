@@ -516,11 +516,24 @@ fun BatchConfigurationContent(
         }
     }
 
+    val context = LocalContext.current
+
     val currentConfirmTrigger = remember {
         {
-            val limitsList = selectedApps.map { app ->
-                val appNetTypes = appNetworkTypes[app.packageName] ?: setOf("four_g")
-                val appNetTypeStr = appNetTypes.joinToString(",")
+            var allValid = true
+            for (app in selectedApps) {
+                val appNetTypes = appNetworkTypes[app.packageName] ?: emptySet()
+                if (appNetTypes.isEmpty()) {
+                    android.widget.Toast.makeText(context, "${app.name} Limit not selected", android.widget.Toast.LENGTH_SHORT).show()
+                    allValid = false
+                    break
+                }
+            }
+
+            if (allValid) {
+                val limitsList = selectedApps.map { app ->
+                    val appNetTypes = appNetworkTypes[app.packageName] ?: setOf("four_g")
+                    val appNetTypeStr = appNetTypes.joinToString(",")
                 val appLimType = appLimitTypes[app.packageName] ?: "daily"
 
                 val wifiVal = appWifiLimitsInput[app.packageName]?.toLongOrNull() ?: 100L
@@ -542,8 +555,9 @@ fun BatchConfigurationContent(
                     mobileDataLimit = if (appNetTypes.contains("mobile")) mobileVal * mobileMultiplier else 0L,
                     isManuallyBlocked = appManuallyBlocked[app.packageName] ?: false
                 )
+                }
+                onConfirm(limitsList)
             }
-            onConfirm(limitsList)
         }
     }
     
