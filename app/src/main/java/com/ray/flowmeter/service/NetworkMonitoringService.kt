@@ -440,13 +440,15 @@ class NetworkMonitoringService : Service() {
                 kotlin.runCatching {
                     runBlocking(Dispatchers.IO) {
                         val (rx, tx) = queryUsagePairForInterval(session.startTime, now)
-                        fourGRepository.update(session.copy(
-                            endTime = now,
-                            closed = false,
-                            usageBytes = rx + tx,
-                            usageBytesDown = rx,
-                            usageBytesUp = tx,
-                        ))
+                        fourGRepository.update(
+                            session.copy(
+                                endTime = now,
+                                closed = false,
+                                usageBytes = rx + tx,
+                                usageBytesDown = rx,
+                                usageBytesUp = tx,
+                            )
+                        )
                     }
                 }
             }
@@ -486,7 +488,7 @@ class NetworkMonitoringService : Service() {
 
             // 0. Detect Reset Immediately
             val dailyStart = NetworkStatsUtils.getStartTimeForPeriod("daily", currentTime, resetHour, resetMinute, monthlyResetDay)
-            if (lastDailyResetStartTime != 0L && dailyStart != lastDailyResetStartTime) {
+            if (lastDailyResetStartTime != 0L && (dailyStart != lastDailyResetStartTime)) {
                 // A reset occurred! Zero out cache immediately for instant UI feedback
                 cachedWifiUsage = 0
                 cachedMobileUsage = 0
@@ -586,73 +588,90 @@ class NetworkMonitoringService : Service() {
         val dataMonthlyEnabled = repository.dataMonthlyLimitEnabled.first()
         val wifiDailyEnabled = repository.wifiDailyLimitEnabled.first()
         val wifiMonthlyEnabled = repository.wifiMonthlyLimitEnabled.first()
+        
+        val dataCustomEnabled = repository.dataCustomLimitEnabled.first()
+        val wifiCustomEnabled = repository.wifiCustomLimitEnabled.first()
 
         val dataDailyLimit = repository.dataDailyLimit.first()
         val dataMonthlyLimit = repository.dataMonthlyLimit.first()
         val wifiDailyLimit = repository.wifiDailyLimit.first()
         val wifiMonthlyLimit = repository.wifiMonthlyLimit.first()
+        
+        val dataCustomLimit = repository.dataCustomLimit.first()
+        val wifiCustomLimit = repository.wifiCustomLimit.first()
 
         // 1. Check Daily Mobile
-        if (dataDailyEnabled && (cachedMobileUsage > dataDailyLimit) && !hasAlertedData) {
+        val isExceededDailyMobile = dataDailyEnabled && (cachedMobileUsage > dataDailyLimit)
+        if (isExceededDailyMobile && !hasAlertedData) {
             sendLimitAlert("mobile", cachedMobileUsage, "daily", dataDailyLimit)
             hasAlertedData = true
-        } else if (cachedMobileUsage < dataDailyLimit) {
+        } else if (!isExceededDailyMobile) {
             hasAlertedData = false
         }
 
         // 1b. Check Daily 4G
         val fourGDailyEnabled = repository.fourGDailyLimitEnabled.first()
         val fourGDailyLimit = repository.fourGDailyLimit.first()
-        if (fourGDailyEnabled && (cachedDailyFourGUsage > fourGDailyLimit) && !hasAlertedFourGData) {
+        val isExceeded4G = fourGDailyEnabled && (cachedDailyFourGUsage > fourGDailyLimit)
+        
+        if (isExceeded4G && !hasAlertedFourGData) {
             sendLimitAlert("four_g", cachedDailyFourGUsage, "daily", fourGDailyLimit)
             hasAlertedFourGData = true
-        } else if (cachedDailyFourGUsage < fourGDailyLimit) {
+        } else if (!isExceeded4G) {
             hasAlertedFourGData = false
         }
+        
+        // Update 4G firewall flag: Block only if currently on 4G AND limit is exceeded
+        repository.setFourGBlocked(isExceeded4G && isCurrentlyOn4G)
 
         // 2. Check Monthly Mobile
-        if (dataMonthlyEnabled && (cachedMonthlyMobileUsage > dataMonthlyLimit) && !hasAlertedMonthlyData) {
+        val isExceededMonthlyMobile = dataMonthlyEnabled && (cachedMonthlyMobileUsage > dataMonthlyLimit)
+        if (isExceededMonthlyMobile && !hasAlertedMonthlyData) {
             sendLimitAlert("mobile", cachedMonthlyMobileUsage, "monthly", dataMonthlyLimit)
             hasAlertedMonthlyData = true
-        } else if (cachedMonthlyMobileUsage < dataMonthlyLimit) {
+        } else if (!isExceededMonthlyMobile) {
             hasAlertedMonthlyData = false
         }
 
         // 3. Check Daily Wi-Fi
-        if (wifiDailyEnabled && (cachedWifiUsage > wifiDailyLimit) && !hasAlertedWifi) {
+        val isExceededDailyWifi = wifiDailyEnabled && (cachedWifiUsage > wifiDailyLimit)
+        if (isExceededDailyWifi && !hasAlertedWifi) {
             sendLimitAlert("wifi", cachedWifiUsage, "daily", wifiDailyLimit)
             hasAlertedWifi = true
-        } else if (cachedWifiUsage < wifiDailyLimit) {
+        } else if (!isExceededDailyWifi) {
             hasAlertedWifi = false
         }
 
         // 4. Check Monthly Wi-Fi
-        if (wifiMonthlyEnabled && (cachedMonthlyWifiUsage > wifiMonthlyLimit) && !hasAlertedMonthlyWifi) {
+        val isExceededMonthlyWifi = wifiMonthlyEnabled && (cachedMonthlyWifiUsage > wifiMonthlyLimit)
+        if (isExceededMonthlyWifi && !hasAlertedMonthlyWifi) {
             sendLimitAlert("wifi", cachedMonthlyWifiUsage, "monthly", wifiMonthlyLimit)
             hasAlertedMonthlyWifi = true
-        } else if (cachedMonthlyWifiUsage < wifiMonthlyLimit) {
+        } else if (!isExceededMonthlyWifi) {
             hasAlertedMonthlyWifi = false
         }
 
         // 5. Check Custom Mobile
-        val dataCustomEnabled = repository.dataCustomLimitEnabled.first()
-        val dataCustomLimit = repository.dataCustomLimit.first()
-        if (dataCustomEnabled && (cachedCustomMobileUsage > dataCustomLimit) && !hasAlertedCustomData) {
+        val isExceededCustomMobile = dataCustomEnabled && (cachedCustomMobileUsage > dataCustomLimit)
+        if (isExceededCustomMobile && !hasAlertedCustomData) {
             sendLimitAlert("mobile", cachedCustomMobileUsage, "custom", dataCustomLimit)
             hasAlertedCustomData = true
-        } else if (cachedCustomMobileUsage < dataCustomLimit) {
+        } else if (!isExceededCustomMobile) {
             hasAlertedCustomData = false
         }
 
         // 6. Check Custom Wi-Fi
-        val wifiCustomEnabled = repository.wifiCustomLimitEnabled.first()
-        val wifiCustomLimit = repository.wifiCustomLimit.first()
-        if (wifiCustomEnabled && (cachedCustomWifiUsage > wifiCustomLimit) && !hasAlertedCustomWifi) {
+        val isExceededCustomWifi = wifiCustomEnabled && (cachedCustomWifiUsage > wifiCustomLimit)
+        if (isExceededCustomWifi && !hasAlertedCustomWifi) {
             sendLimitAlert("wifi", cachedCustomWifiUsage, "custom", wifiCustomLimit)
             hasAlertedCustomWifi = true
-        } else if (cachedCustomWifiUsage < wifiCustomLimit) {
+        } else if (!isExceededCustomWifi) {
             hasAlertedCustomWifi = false
         }
+        
+        // Update Global Block Flags
+        repository.setCellularBlocked(isExceededDailyMobile || isExceededMonthlyMobile || isExceededCustomMobile)
+        repository.setWifiBlocked(isExceededDailyWifi || isExceededMonthlyWifi || isExceededCustomWifi)
     }
 
     private fun sendLimitAlert(networkType: String, currentUsage: Long, period: String, limitValue: Long) {
@@ -1415,10 +1434,24 @@ class NetworkMonitoringService : Service() {
 
                     val wifiUsage = getUidUsageForTransport(networkStatsManager, uid, startTime, currentTime, NetworkCapabilities.TRANSPORT_WIFI)
                     val mobileUsage = getUidUsageForTransport(networkStatsManager, uid, startTime, currentTime, NetworkCapabilities.TRANSPORT_CELLULAR)
+                    
+                    val fourGUsage = if (limit.networkType == "four_g") {
+                        val sessions = fourGRepository.getSessionsInRange(startTime, currentTime)
+                        var total = 0L
+                        for (session in sessions) {
+                            val s = maxOf(startTime, session.startTime)
+                            val e = if (session.closed) minOf(currentTime, session.endTime) else currentTime
+                            if (e > s) {
+                                total += getUidUsageForTransport(networkStatsManager, uid, s, e, NetworkCapabilities.TRANSPORT_CELLULAR)
+                            }
+                        }
+                        total
+                    } else 0L
 
                     val currentUsage = when (limit.networkType) {
                         "wifi" -> wifiUsage
                         "mobile" -> mobileUsage
+                        "four_g" -> fourGUsage
                         else -> wifiUsage + mobileUsage
                     }
 
@@ -1551,10 +1584,14 @@ class NetworkMonitoringService : Service() {
         // Optimization: If we are not on 4G and no session is active, just stop here.
         if (!isCurrent4G && activeFourGSession == null) {
             isCurrentlyOn4G = false
+            serviceScope.launch { repository.setOn4G(false) }
             return@withContext
         }
 
-        isCurrentlyOn4G = isCurrent4G
+        if (isCurrentlyOn4G != isCurrent4G) {
+            isCurrentlyOn4G = isCurrent4G
+            serviceScope.launch { repository.setOn4G(isCurrent4G) }
+        }
 
         // 1. Handle Network Switch (to 5G, 5G+, etc.)
         if (shouldClose) {

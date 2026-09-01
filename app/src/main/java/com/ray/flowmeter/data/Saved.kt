@@ -87,7 +87,7 @@ data class FourGSession(
     val closed: Boolean = false,
     val usageBytes: Long = 0L,
     val usageBytesDown: Long = 0L,
-    val usageBytesUp: Long = 0L
+    val usageBytesUp: Long = 0L,
 )
 
 @Dao
@@ -292,6 +292,10 @@ class UserPreferencesRepository(private val context: Context) {
         val IGNORED_UPDATE_VERSION = stringPreferencesKey("ignored_update_version")
         val SPEED_UNIT = stringPreferencesKey("speed_unit")
         val SHOW_USAGE_FILTERS = booleanPreferencesKey("show_usage_filters")
+        val IS_FOUR_G_BLOCKED = booleanPreferencesKey("is_4g_blocked")
+        val IS_CELLULAR_BLOCKED = booleanPreferencesKey("is_cellular_blocked")
+        val IS_WIFI_BLOCKED = booleanPreferencesKey("is_wifi_blocked")
+        val IS_ON_4G = booleanPreferencesKey("is_on_4g")
     }
 
     private val preferencesFlow = context.dataStore.data
@@ -645,6 +649,26 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.SHOW_USAGE_FILTERS] ?: false
         }.distinctUntilChanged()
 
+    val isFourGBlocked: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.IS_FOUR_G_BLOCKED] ?: false
+        }.distinctUntilChanged()
+
+    val isCellularBlocked: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.IS_CELLULAR_BLOCKED] ?: false
+        }.distinctUntilChanged()
+
+    val isWifiBlocked: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.IS_WIFI_BLOCKED] ?: false
+        }.distinctUntilChanged()
+
+    val isOn4G: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.IS_ON_4G] ?: false
+        }.distinctUntilChanged()
+
     // --- Preferences Write Operations ---
 
     suspend fun setOnboardingCompleted(completed: Boolean) {
@@ -947,6 +971,30 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun setFourGBlocked(blocked: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_FOUR_G_BLOCKED] = blocked
+        }
+    }
+
+    suspend fun setCellularBlocked(blocked: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_CELLULAR_BLOCKED] = blocked
+        }
+    }
+
+    suspend fun setWifiBlocked(blocked: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_WIFI_BLOCKED] = blocked
+        }
+    }
+
+    suspend fun setOn4G(on4G: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_ON_4G] = on4G
+        }
+    }
+
     suspend fun setLanguage(languageCode: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.LANGUAGE] = languageCode
@@ -957,7 +1005,7 @@ class UserPreferencesRepository(private val context: Context) {
         context.dataStore.edit { preferences ->
             val current = preferences[PreferencesKeys.APP_LAUNCH_COUNT] ?: 0
             preferences[PreferencesKeys.APP_LAUNCH_COUNT] = current + 1
-            if (preferences[PreferencesKeys.FIRST_INSTALL_TIME] == null || preferences[PreferencesKeys.FIRST_INSTALL_TIME] == 0L) {
+            if ((preferences[PreferencesKeys.FIRST_INSTALL_TIME] == null) || (preferences[PreferencesKeys.FIRST_INSTALL_TIME] == 0L)) {
                 preferences[PreferencesKeys.FIRST_INSTALL_TIME] = System.currentTimeMillis()
             }
         }

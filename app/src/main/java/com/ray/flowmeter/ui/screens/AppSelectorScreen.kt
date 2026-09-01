@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import com.ray.flowmeter.R
 import com.ray.flowmeter.ui.theme.StaggeredEntrance
-import com.ray.flowmeter.ui.theme.bounceClick
 import com.ray.flowmeter.ui.viewmodels.AppLimitsViewModel
 import androidx.compose.foundation.BorderStroke
 import com.ray.flowmeter.data.AppLimit
@@ -386,7 +385,6 @@ fun BatchConfigurationScreen(
             ) {
                 BatchConfigurationContent(
                     selectedApps = selectedApps,
-                    onCancel = onBack,
                     onConfirm = onConfirm,
                     onRegisterConfirmTrigger = { triggerConfirm = it }
                 )
@@ -457,7 +455,6 @@ fun BatchConfigurationScreen(
 @Composable
 fun BatchConfigurationContent(
     selectedApps: List<AppLimitsViewModel.AppInfo>,
-    onCancel: () -> Unit,
     onConfirm: (List<AppLimit>) -> Unit,
     onRegisterConfirmTrigger: (() -> Unit) -> Unit = {}
 ) {
@@ -526,22 +523,22 @@ fun BatchConfigurationContent(
                 val appLimType = appLimitTypes[app.packageName] ?: "daily"
 
                 val wifiVal = appWifiLimitsInput[app.packageName]?.toLongOrNull() ?: 0L
-                val wifiMult = if (appWifiLimitsUnit[app.packageName] == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
+                val wifiMultiplier = if (appWifiLimitsUnit[app.packageName] == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
                 
                 val mobileVal = appMobileLimitsInput[app.packageName]?.toLongOrNull() ?: 0L
-                val mobileMult = if (appMobileLimitsUnit[app.packageName] == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
+                val mobileMultiplier = if (appMobileLimitsUnit[app.packageName] == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
 
                 val singleVal = appLimitsInput[app.packageName]?.toLongOrNull() ?: 0L
-                val singleMult = if (appLimitsUnit[app.packageName] == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
+                val singleMultiplier = if (appLimitsUnit[app.packageName] == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
 
                 AppLimit(
                     packageName = app.packageName,
                     appName = app.name,
-                    dataLimit = if (appNetType != "both") singleVal * singleMult else 0L,
+                    dataLimit = if (appNetType != "both") singleVal * singleMultiplier else 0L,
                     limitType = appLimType,
                     networkType = appNetType,
-                    wifiDataLimit = if (appNetType == "both") wifiVal * wifiMult else if (appNetType == "wifi") singleVal * singleMult else 0L,
-                    mobileDataLimit = if (appNetType == "both") mobileVal * mobileMult else if (appNetType == "mobile") singleVal * singleMult else 0L,
+                    wifiDataLimit = if (appNetType == "both") wifiVal * wifiMultiplier else if (appNetType == "wifi") singleVal * singleMultiplier else 0L,
+                    mobileDataLimit = if (appNetType == "both") mobileVal * mobileMultiplier else if (appNetType == "mobile") singleVal * singleMultiplier else 0L,
                     isManuallyBlocked = appManuallyBlocked[app.packageName] ?: false
                 )
             }
@@ -616,6 +613,15 @@ fun BatchConfigurationContent(
                             selectedApps.forEach { appNetworkTypes[it.packageName] = "mobile" }
                         },
                         label = stringResource(R.string.label_mobile),
+                        icon = Icons.Rounded.SignalCellularAlt
+                    )
+                    NetworkChip(
+                        selected = networkType == "four_g",
+                        onClick = {
+                            networkType = "four_g"
+                            selectedApps.forEach { appNetworkTypes[it.packageName] = "four_g" }
+                        },
+                        label = stringResource(R.string.label_four_g),
                         icon = Icons.Rounded.SignalCellularAlt
                     )
                 }
@@ -705,7 +711,11 @@ fun BatchConfigurationContent(
                         }
                     }
                 } else {
-                    val dynamicLimitLabel = if (networkType == "wifi") stringResource(R.string.settings_wifi_limit) else stringResource(R.string.settings_mobile_limit)
+                    val dynamicLimitLabel = when (networkType) {
+                        "wifi" -> stringResource(R.string.settings_wifi_limit)
+                        "four_g" -> stringResource(R.string.settings_four_g_limit)
+                        else -> stringResource(R.string.settings_mobile_limit)
+                    }
                     Text(dynamicLimitLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(6.dp))
                     LimitInputRow(
@@ -845,6 +855,11 @@ fun BatchConfigurationContent(
                                     onClick = { appNetworkTypes[app.packageName] = "mobile" },
                                     label = stringResource(R.string.label_mobile)
                                 )
+                                MiniChip(
+                                    selected = currentAppNetworkType == "four_g",
+                                    onClick = { appNetworkTypes[app.packageName] = "four_g" },
+                                    label = stringResource(R.string.label_four_g)
+                                )
                             }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -893,7 +908,11 @@ fun BatchConfigurationContent(
                             }
                         }
                     } else {
-                        val dynamicLabel = if (currentAppNetworkType == "wifi") stringResource(R.string.settings_wifi_limit) else stringResource(R.string.settings_mobile_limit)
+                        val dynamicLabel = when (currentAppNetworkType) {
+                            "wifi" -> stringResource(R.string.settings_wifi_limit)
+                            "four_g" -> stringResource(R.string.settings_four_g_limit)
+                            else -> stringResource(R.string.settings_mobile_limit)
+                        }
                         Text(dynamicLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
                         LimitInputRow(
@@ -1088,6 +1107,7 @@ fun LimitConfigurationContent(
                 NetworkChip(selected = networkType == "both", onClick = { onNetworkTypeChange("both") }, label = stringResource(R.string.label_both), icon = Icons.Rounded.Language)
                 NetworkChip(selected = networkType == "wifi", onClick = { onNetworkTypeChange("wifi") }, label = stringResource(R.string.label_wifi), icon = Icons.Rounded.Wifi)
                 NetworkChip(selected = networkType == "mobile", onClick = { onNetworkTypeChange("mobile") }, label = stringResource(R.string.label_mobile), icon = Icons.Rounded.SignalCellularAlt)
+                NetworkChip(selected = networkType == "four_g", onClick = { onNetworkTypeChange("four_g") }, label = stringResource(R.string.label_four_g), icon = Icons.Rounded.SignalCellularAlt)
         }
 
         Spacer(modifier = Modifier.height(28.dp))
@@ -1113,7 +1133,11 @@ fun LimitConfigurationContent(
                 onUnitChange = onMobileLimitUnitChange
             )
         } else {
-            val dynamicLimitLabel = if (networkType == "wifi") stringResource(R.string.settings_wifi_limit) else stringResource(R.string.settings_mobile_limit)
+            val dynamicLimitLabel = when (networkType) {
+                "wifi" -> stringResource(R.string.settings_wifi_limit)
+                "four_g" -> stringResource(R.string.settings_four_g_limit)
+                else -> stringResource(R.string.settings_mobile_limit)
+            }
             Text(dynamicLimitLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             LimitInputRow(

@@ -11,6 +11,7 @@ import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import com.ray.flowmeter.data.AppLimit
 import com.ray.flowmeter.data.AppLimitRepository
 import com.ray.flowmeter.data.FlowMeterDatabase
 import com.ray.flowmeter.data.UserPreferencesRepository
@@ -22,8 +23,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
-import com.ray.flowmeter.utils.NetworkStatsUtils
-import android.app.usage.NetworkStatsManager
 import kotlin.time.Duration.Companion.milliseconds
 
 // VPN Service that intercepts and blocks network traffic for applications
@@ -111,83 +110,6 @@ class AppBlockVpnService : VpnService() {
         val blockedApps: List<String>
     )
 
-    private suspend fun isSystemPlanLimitExceeded(networkType: Int?): Boolean {
-        if (networkType == null) return false
-        
-        val networkStatsManager = getSystemService(NETWORK_STATS_SERVICE) as? NetworkStatsManager ?: return false
-        
-        val resetHour = userPrefs.resetTimeHour.first()
-        val resetMinute = userPrefs.resetTimeMinute.first()
-        val monthlyResetDay = userPrefs.monthlyResetDay.first()
-        
-        val currentTime = System.currentTimeMillis()
-        
-        fun getStartTime(period: String): Long {
-            return NetworkStatsUtils.getStartTimeForPeriod(period, currentTime, resetHour, resetMinute, monthlyResetDay)
-        }
-
-        fun getSumUsage(transportType: Int, period: String): Long {
-            val start = getStartTime(period)
-            return NetworkStatsUtils.getDeviceTotalUsage(networkStatsManager, transportType, start, currentTime)
-        }
-
-        fun getCustomSumUsage(transportType: Int, start: Long, end: Long): Long {
-            val queryEnd = end.coerceAtMost(currentTime)
-            val queryStart = start.coerceAtMost(queryEnd)
-            return NetworkStatsUtils.getDeviceTotalUsage(networkStatsManager, transportType, queryStart, queryEnd)
-        }
-
-        if (networkType == NetworkCapabilities.TRANSPORT_CELLULAR) {
-            val dailyEnabled = userPrefs.dataDailyLimitEnabled.first()
-            if (dailyEnabled) {
-                val limit = userPrefs.dataDailyLimit.first()
-                val usage = getSumUsage(NetworkCapabilities.TRANSPORT_CELLULAR, "daily")
-                if (usage >= limit) return true
-            }
-            
-            val monthlyEnabled = userPrefs.dataMonthlyLimitEnabled.first()
-            if (monthlyEnabled) {
-                val limit = userPrefs.dataMonthlyLimit.first()
-                val usage = getSumUsage(NetworkCapabilities.TRANSPORT_CELLULAR, "monthly")
-                if (usage >= limit) return true
-            }
-            
-            val customEnabled = userPrefs.dataCustomLimitEnabled.first()
-            if (customEnabled) {
-                val limit = userPrefs.dataCustomLimit.first()
-                val start = userPrefs.dataCustomLimitStart.first()
-                val end = userPrefs.dataCustomLimitEnd.first()
-                val usage = getCustomSumUsage(NetworkCapabilities.TRANSPORT_CELLULAR, start, end)
-                if (usage >= limit) return true
-            }
-        } else if (networkType == NetworkCapabilities.TRANSPORT_WIFI) {
-            val dailyEnabled = userPrefs.wifiDailyLimitEnabled.first()
-            if (dailyEnabled) {
-                val limit = userPrefs.wifiDailyLimit.first()
-                val usage = getSumUsage(NetworkCapabilities.TRANSPORT_WIFI, "daily")
-                if (usage >= limit) return true
-            }
-            
-            val monthlyEnabled = userPrefs.wifiMonthlyLimitEnabled.first()
-            if (monthlyEnabled) {
-                val limit = userPrefs.wifiMonthlyLimit.first()
-                val usage = getSumUsage(NetworkCapabilities.TRANSPORT_WIFI, "monthly")
-                if (usage >= limit) return true
-            }
-            
-            val customEnabled = userPrefs.wifiCustomLimitEnabled.first()
-            if (customEnabled) {
-                val limit = userPrefs.wifiCustomLimit.first()
-                val start = userPrefs.wifiCustomLimitStart.first()
-                val end = userPrefs.wifiCustomLimitEnd.first()
-                val usage = getCustomSumUsage(NetworkCapabilities.TRANSPORT_WIFI, start, end)
-                if (usage >= limit) return true
-            }
-        }
-        
-        return false
-    }
-
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         collectionJob?.cancel()
         
@@ -199,15 +121,33 @@ class AppBlockVpnService : VpnService() {
         }
 
         collectionJob = serviceScope.launch {
+            @Suppress("UNCHECKED_CAST")
             combine(
                 repository.allAppLimits,
                 userPrefs.appBlockingMasterEnabled,
+                userPrefs.isFourGBlocked,
+                userPrefs.isCellularBlocked,
+                userPrefs.isWifiBlocked,
+                userPrefs.isOn4G,
                 currentNetworkType,
                 tickerFlow
-            ) { limits, masterEnabled, networkType, _ ->
+            ) { args ->
+                val limits = args[0] as List<AppLimit>
+                val masterEnabled = args[1] as Boolean
+                val is4GBlocked = args[2] as Boolean
+                val isCellBlocked = args[3] as Boolean
+                val isWifiBlocked = args[4] as Boolean
+                val isOn4G = args[5] as Boolean
+                val networkType = args[6] as? Int
+                
                 if (!masterEnabled) null
                 else {
-                    val systemLimitExceeded = isSystemPlanLimitExceeded(networkType)
+                    val systemLimitExceeded = when (networkType) {
+                        NetworkCapabilities.TRANSPORT_CELLULAR -> isCellBlocked || is4GBlocked
+                        NetworkCapabilities.TRANSPORT_WIFI -> isWifiBlocked
+                        else -> false
+                    }
+
                     if (systemLimitExceeded) {
                         VpnBlockConfig(blockAll = true, blockedApps = emptyList())
                     } else {
@@ -215,6 +155,7 @@ class AppBlockVpnService : VpnService() {
                             limit.isManuallyBlocked || (limit.isEnabled && when (limit.networkType) {
                                 "wifi" -> limit.isBlocked && (networkType == NetworkCapabilities.TRANSPORT_WIFI)
                                 "mobile" -> limit.isBlocked && (networkType == NetworkCapabilities.TRANSPORT_CELLULAR)
+                                "four_g" -> limit.isBlocked && (networkType == NetworkCapabilities.TRANSPORT_CELLULAR && isOn4G)
                                 "both" -> {
                                     (limit.isWifiBlocked && (networkType == NetworkCapabilities.TRANSPORT_WIFI)) ||
                                     (limit.isMobileBlocked && (networkType == NetworkCapabilities.TRANSPORT_CELLULAR))

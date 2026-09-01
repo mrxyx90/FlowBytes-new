@@ -119,6 +119,7 @@
     <string name="settings_data_alerts_desc">Get notified when apps consume excessive background data</string>
     <string name="settings_mobile_limit">Mobile Data Limit</string>
     <string name="settings_wifi_limit">Wi-Fi Data Limit</string>
+    <string name="settings_four_g_limit">4G Data Limit</string>
 
     <string name="label_plan_duration">Plan Duration</string>
     <string name="msg_alert_muted">Alert Muted</string>
