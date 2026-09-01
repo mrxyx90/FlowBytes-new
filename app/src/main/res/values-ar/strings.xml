@@ -293,10 +293,14 @@
     <string name="label_custom_wifi">واي فاي مخصص</string>
     <string name="label_custom_mobile">بيانات الهاتف مخصص</string>
     <string name="settings_traffic_threshold_subtitle">تكوين حدود السرعة والمدة للتنبيهات</string>
-    <string name="whats_new_custom_limits_title">حدود النطاق الزمني المخصصة</string>
-    <string name="whats_new_custom_limits_desc">يمكنك الآن تعيين حدود البيانات لنطاقات تاريخ محددة عبر كل من شبكات الهاتف المحمول والواي فاي.</string>
-    <string name="whats_new_reset_day_title">يوم إعادة التعيين الشهري</string>
-    <string name="whats_new_reset_day_desc">دعم دورات الفوترة المخصصة. اختر يوماً معيناً من الشهر لإعادة تعيين استخدامك.</string>
+    <string name="whats_new_multi_network_title">قيود الشبكات المتعددة</string>
+    <string name="whats_new_multi_network_desc">تعيين قيود البيانات لأنواع شبكات متعددة (Wi-Fi، جوال، 4G) في وقت واحد لأي تطبيق.</string>
+    <string name="whats_new_performance_title">مراقبة ذكية</string>
+    <string name="whats_new_performance_desc">يضمن منطق المراقبة ثنائي التردد تتبعًا دقيقًا مع تقليل استهلاك البطارية بشكل كبير.</string>
+    <string name="whats_new_firewall_title">جدار حماية متكامل</string>
+    <string name="whats_new_firewall_desc">حظر الوصول إلى الإنترنت فورًا عن طريق تعيين حد 0 ميجابايت. يتعامل محرك VPN المحسن مع القواعد دون تأخير.</string>
+    <string name="whats_new_modern_ui_title">محسن لنظام Android 14</string>
+    <string name="whats_new_modern_ui_desc">تنظيف كامل لـ API 34. تحسين استقرار المظهر، دعم AMOLED، وتصفح إعدادات مبسط.</string>
     <string name="feedback_email_subject">آراء FlowBytes - %1$d نجوم</string>
 
     <string name="btn_done">تم</string>

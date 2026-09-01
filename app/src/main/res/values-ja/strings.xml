@@ -327,10 +327,14 @@
     <string name="label_custom_wifi">カスタム Wi-Fi</string>
     <string name="label_custom_mobile">カスタム モバイル</string>
     <string name="settings_traffic_threshold_subtitle">アラートの速度と時間の制限を設定します</string>
-    <string name="whats_new_custom_limits_title">カスタム期間の制限</string>
-    <string name="whats_new_custom_limits_desc">モバイルとWi-Fiの両方で、特定の期間に対するデータ制限を設定できるようになりました。</string>
-    <string name="whats_new_reset_day_title">月次リセット日</string>
-    <string name="whats_new_reset_day_desc">カスタムの請求サイクルをサポートしました。使用量がリセットされる日を自由に選択できます。</string>
+    <string name="whats_new_multi_network_title">マルチネットワーク制限</string>
+    <string name="whats_new_multi_network_desc">Wi-Fi、モバイル、4Gなど複数のネットワークタイプに対して、アプリごとのデータ制限を同時に設定可能。</string>
+    <string name="whats_new_performance_title">スマートモニタリング</string>
+    <string name="whats_new_performance_desc">デュアル周波数モニタリングにより、正確なトラッキングと大幅なバッテリー節約を両立。</string>
+    <string name="whats_new_firewall_title">統合ファイアウォール</string>
+    <string name="whats_new_firewall_desc">0MB制限でインターネットアクセスを即座にブロック。強化されたVPNエンジンが遅延ゼロでルールを適用。</string>
+    <string name="whats_new_modern_ui_title">Android 14 最適化</string>
+    <string name="whats_new_modern_ui_desc">API 34 向けのクリーンアップ。テーマの安定性向上、AMOLED対応、設定ナビゲーションの合理化。</string>
     <string name="feedback_email_subject">FlowBytes フィードバック - 星 %1$d 個</string>
 
     <string name="legal_privacy_policy">プライバシーポリシー\n発効日：2026年4月29日\n\nFlowBytes（以下「本アプリ」）の開発者は、本アプリを無料で提供します。本アプリは現状有姿で提供され、いかなる保証もありません。\n\n1. 情報の収集と利用\nFlowBytesは、デバイスのネットワーク速度とデータ使用量（Wi-Fiおよびモバイル通信）を監視し、インターネット利用の管理を支援します。監視、データ使用量の計算、およびブロックのアクションはすべてデバイス内でローカルに実行されます。以下を含む個人データを収集、保存、または送信することはありません：\n- 閲覧履歴\n- ネットワーク通信の内容\n- IPアドレス\n- 個人を特定できる情報\n\n2. 必要な権限\n正しく機能するために、本アプリは以下の権限を必要とします：\n- 使用状況へのアクセス（ネットワーク統計）：NetworkStatsManagerおよびTrafficStatsを介してネットワーク使用統計にアクセスし、ダウンロード/アップロード速度の計算およびアプリごとのデータ使用量を追跡するために使用します。\n- フォアグラウンドサービス：通知バーにリアルタイムのネットワーク速度を表示し、継続的な監視を確保するために、バックグラウンドでサービスを実行することを許可します。\n- VPNサービス（ローカルVPN）：制限を超えたアプリのインターネットアクセスを管理するためにローカルVPNを使用します。このVPNは100%ローカルであり、通信データがデバイスの外に出ることや、開発者が傍受することはありません。\n\nこれらの権限を通じてアクセスされるすべてのデータはデバイス内に留まり、本アプリ内の監視および制御機能を提供するためだけに利用されます。\n\n3. 第三者サービス\n本アプリは、個人を特定するために利用される情報を収集する第三者サービス、分析ツール、または広告ネットワークを使用していません。\n\n4. セキュリティ\nすべてのデータ処理はデバイス内でローカルに実行されるため、開発者側からのデータ漏洩のリスクは最小限です。ただし、電子的な保存方法やインターネット経由の送信方法に完全に安全なものはなく、絶対的なセキュリティを保証することはできません。\n\n5. 子供のプライバシー\n本サービスは13歳未満の方を対象としていません。13歳未満の子供から個人を特定できる情報を意図的に収集することはありません。\n\n6. プライバシーポリシーの変更\nプライバシーポリシーは随時更新されることがあります。変更はこのページに掲載されます。定期的にこのページを確認することをお勧めします。\n\n7. お問い合わせ\n本プライバシーポリシーに関するご質問やご提案がある場合は、以下までご連絡ください：\nメール： support.rayapps@gmail.com</string>

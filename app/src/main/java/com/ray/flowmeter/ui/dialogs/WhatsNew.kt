@@ -74,13 +74,23 @@ fun ChangelogDialog(
                 )
 
                 ChangelogTextItem(
-                    title = stringResource(R.string.whats_new_custom_limits_title),
-                    description = stringResource(R.string.whats_new_custom_limits_desc)
+                    title = stringResource(R.string.whats_new_multi_network_title),
+                    description = stringResource(R.string.whats_new_multi_network_desc)
                 )
 
                 ChangelogTextItem(
-                    title = stringResource(R.string.whats_new_reset_day_title),
-                    description = stringResource(R.string.whats_new_reset_day_desc)
+                    title = stringResource(R.string.whats_new_performance_title),
+                    description = stringResource(R.string.whats_new_performance_desc)
+                )
+
+                ChangelogTextItem(
+                    title = stringResource(R.string.whats_new_firewall_title),
+                    description = stringResource(R.string.whats_new_firewall_desc)
+                )
+
+                ChangelogTextItem(
+                    title = stringResource(R.string.whats_new_modern_ui_title),
+                    description = stringResource(R.string.whats_new_modern_ui_desc)
                 )
 
 

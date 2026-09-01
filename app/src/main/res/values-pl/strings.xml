@@ -339,10 +339,14 @@
     <string name="label_custom_wifi">Niestandardowe Wi-Fi</string>
     <string name="label_custom_mobile">Niestandardowe dane komórkowe</string>
     <string name="settings_traffic_threshold_subtitle">Skonfiguruj limity prędkości i czasu dla alertów</string>
-    <string name="whats_new_custom_limits_title">Niestandardowe zakresy dat</string>
-    <string name="whats_new_custom_limits_desc">Możesz teraz ustawiać limity danych dla określonych zakresów dat w sieciach komórkowych i Wi-Fi.</string>
-    <string name="whats_new_reset_day_title">Dzień miesięcznego resetu</string>
-    <string name="whats_new_reset_day_desc">Obsługa niestandardowych cykli rozliczeniowych. Wybierz konkretny dzień miesiąca do resetowania zużycia.</string>
+    <string name="whats_new_multi_network_title">Multi-Network Limits</string>
+    <string name="whats_new_multi_network_desc">Set data limits for multiple network types (Wi-Fi, Mobile, 4G) simultaneously for any app.</string>
+    <string name="whats_new_performance_title">Smart Monitoring</string>
+    <string name="whats_new_performance_desc">Dual-frequency monitoring logic ensures accurate tracking while significantly reducing battery consumption.</string>
+    <string name="whats_new_firewall_title">Integrated Firewall</string>
+    <string name="whats_new_firewall_desc">Block internet access instantly by setting a 0MB limit. Enhanced VPN engine handles rules with zero latency.</string>
+    <string name="whats_new_modern_ui_title">Android 14 Optimized</string>
+    <string name="whats_new_modern_ui_desc">Full cleanup for API 34. Improved theme stability, AMOLED support, and streamlined settings navigation.</string>
 
     <string name="label_daily_wifi_limit">Dzienny limit Wi-Fi</string>
     <string name="label_monthly_wifi_limit">Miesięczny limit Wi-Fi</string>

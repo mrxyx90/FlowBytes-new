@@ -339,10 +339,14 @@
     <string name="label_custom_wifi">Wi-Fi Kustom</string>
     <string name="label_custom_mobile">Seluler Kustom</string>
     <string name="settings_traffic_threshold_subtitle">Konfigurasi batas kecepatan dan durasi peringatan</string>
-    <string name="whats_new_custom_limits_title">Batas Rentang Tanggal Kustom</string>
-    <string name="whats_new_custom_limits_desc">Anda sekarang dapat mengatur batas data untuk rentang tanggal tertentu pada jaringan Seluler dan Wi-Fi.</string>
-    <string name="whats_new_reset_day_title">Hari Reset Bulanan</string>
-    <string name="whats_new_reset_day_desc">Dukungan untuk siklus penagihan kustom. Pilih tanggal tertentu setiap bulan untuk mereset penggunaan Anda.</string>
+    <string name="whats_new_multi_network_title">Multi-Network Limits</string>
+    <string name="whats_new_multi_network_desc">Set data limits for multiple network types (Wi-Fi, Mobile, 4G) simultaneously for any app.</string>
+    <string name="whats_new_performance_title">Smart Monitoring</string>
+    <string name="whats_new_performance_desc">Dual-frequency monitoring logic ensures accurate tracking while significantly reducing battery consumption.</string>
+    <string name="whats_new_firewall_title">Integrated Firewall</string>
+    <string name="whats_new_firewall_desc">Block internet access instantly by setting a 0MB limit. Enhanced VPN engine handles rules with zero latency.</string>
+    <string name="whats_new_modern_ui_title">Android 14 Optimized</string>
+    <string name="whats_new_modern_ui_desc">Full cleanup for API 34. Improved theme stability, AMOLED support, and streamlined settings navigation.</string>
 
     <string name="label_daily_wifi_limit">Batas Wi-Fi Harian</string>
     <string name="label_monthly_wifi_limit">Batas Wi-Fi Bulanan</string>

@@ -332,170 +332,170 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    if (onboardingCompleted) {
-                        val monitoringEnabled by settingsViewModel.monitoringEnabled.collectAsState()
-                        val appBlockingMasterEnabled by settingsViewModel.appBlockingMasterEnabled.collectAsState()
-
-                        // Monitor the foreground tracking service lifecycle based on user settings.
-                        LaunchedEffect(monitoringEnabled) {
-                            if (monitoringEnabled != null) {
-                                val serviceIntent = Intent(this@MainActivity, NetworkMonitoringService::class.java)
-                                if (monitoringEnabled == true) {
-                                    if (!NetworkMonitoringService.isRunning) {
-                                        startForegroundService(serviceIntent)
-                                    }
-                                } else {
-                                    stopService(serviceIntent)
-                                    stopService(Intent(this@MainActivity, AppBlockVpnService::class.java))
-                                }
-                            }
-                        }
-
-                        val widgetUpdateInterval by settingsViewModel.widgetUpdateInterval.collectAsState()
-
-                        LaunchedEffect(widgetUpdateInterval) {
-                            WidgetUpdateScheduler.schedule(applicationContext, widgetUpdateInterval)
-                        }
-
-                        // Automatically start VPN blocking service if master controls are toggled on.
-                        LaunchedEffect(monitoringEnabled, appBlockingMasterEnabled) {
-                            if (monitoringEnabled == true && appBlockingMasterEnabled == true) {
-                                prepareVpn()
-                            }
-                        }
-
-                        FlowMeterTheme(
-                            themeMode = themeMode,
-                            useMaterialYou = useMaterialYou,
-                            useAmoled = useAMOLED,
-                            accentColor = accentColor,
+                    FlowMeterTheme(
+                        themeMode = themeMode,
+                        useMaterialYou = useMaterialYou,
+                        useAmoled = useAMOLED,
+                        accentColor = accentColor,
+                    ) {
+                        androidx.compose.material3.Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.background
                         ) {
-                            androidx.compose.material3.Surface(
-                                modifier = Modifier.fillMaxSize(),
-                                color = androidx.compose.material3.MaterialTheme.colorScheme.background
-                            ) {
+                            if (onboardingCompleted) {
+                                val monitoringEnabled by settingsViewModel.monitoringEnabled.collectAsState()
+                                val appBlockingMasterEnabled by settingsViewModel.appBlockingMasterEnabled.collectAsState()
+
+                                // Monitor the foreground tracking service lifecycle based on user settings.
+                                LaunchedEffect(monitoringEnabled) {
+                                    if (monitoringEnabled != null) {
+                                        val serviceIntent = Intent(this@MainActivity, NetworkMonitoringService::class.java)
+                                        if (monitoringEnabled == true) {
+                                            if (!NetworkMonitoringService.isRunning) {
+                                                startForegroundService(serviceIntent)
+                                            }
+                                        } else {
+                                            stopService(serviceIntent)
+                                            stopService(Intent(this@MainActivity, AppBlockVpnService::class.java))
+                                        }
+                                    }
+                                }
+
+                                val widgetUpdateInterval by settingsViewModel.widgetUpdateInterval.collectAsState()
+
+                                LaunchedEffect(widgetUpdateInterval) {
+                                    WidgetUpdateScheduler.schedule(applicationContext, widgetUpdateInterval)
+                                }
+
+                                // Automatically start VPN blocking service if master controls are toggled on.
+                                LaunchedEffect(monitoringEnabled, appBlockingMasterEnabled) {
+                                    if (monitoringEnabled == true && appBlockingMasterEnabled == true) {
+                                        prepareVpn()
+                                    }
+                                }
+
                                 val (currentIntent, setCurrentIntent) = remember { mutableStateOf(intent) }
 
-                                    // Listen for resume lifecycle events to update current intent (e.g. user clicked notification while app is running).
-                                    val lifecycleOwner = LocalLifecycleOwner.current
-                                    DisposableEffect(lifecycleOwner) {
-                                        val observer = LifecycleEventObserver { _, event ->
-                                            if (event == Lifecycle.Event.ON_RESUME) {
-                                                if (currentIntent != intent) {
-                                                    setCurrentIntent(intent)
+                                // Listen for resume lifecycle events to update current intent (e.g. user clicked notification while app is running).
+                                val lifecycleOwner = LocalLifecycleOwner.current
+                                DisposableEffect(lifecycleOwner) {
+                                    val observer = LifecycleEventObserver { _, event ->
+                                        if (event == Lifecycle.Event.ON_RESUME) {
+                                            if (currentIntent != intent) {
+                                                setCurrentIntent(intent)
+                                            }
+                                        }
+                                    }
+                                    lifecycleOwner.lifecycle.addObserver(observer)
+                                    onDispose {
+                                        lifecycleOwner.lifecycle.removeObserver(observer)
+                                    }
+                                }
+
+                                // --- Notification Extra / Deep Link Handling ---
+                                val navigateToAlerts = currentIntent?.getBooleanExtra(NetworkMonitoringService.EXTRA_NAVIGATE_TO_ALERTS, false) ?: false
+                                val navigateToLimits = currentIntent?.getBooleanExtra(NetworkMonitoringService.EXTRA_NAVIGATE_TO_LIMITS, false) ?: false
+
+                                val initialDestination = when {
+                                    navigateToLimits -> Destination.Limits
+                                    navigateToAlerts -> Destination.Alerts
+                                    else -> Destination.Home
+                                }
+
+                                val muteAppName = currentIntent?.getStringExtra(NetworkMonitoringService.EXTRA_MUTE_APP_NAME)
+                                val dismissNotificationId = currentIntent?.getIntExtra(NetworkMonitoringService.EXTRA_DISMISS_NOTIFICATION_ID, -1) ?: -1
+                                val isIgnoreAction = currentIntent?.action == NetworkMonitoringService.ACTION_IGNORE_APP
+
+                                // Process incoming intent actions (such as clicking "Ignore App" directly from an alert notification).
+                                LaunchedEffect(currentIntent) {
+                                    if (muteAppName != null) {
+                                        if (isIgnoreAction) {
+                                            if (dismissNotificationId != -1) {
+                                                try {
+                                                    val manager = getSystemService(android.app.NotificationManager::class.java)
+                                                    manager?.cancel(dismissNotificationId)
+                                                } catch (e: Exception) {
+                                                    Log.e("MainActivity", "Failed to cancel notification", e)
                                                 }
                                             }
                                         }
-                                        lifecycleOwner.lifecycle.addObserver(observer)
-                                        onDispose {
-                                            lifecycleOwner.lifecycle.removeObserver(observer)
+                                        alertsViewModel.onMuteRequested(muteAppName)
+
+                                        // Clear extras to avoid re-triggering the action if the activity is recreated.
+                                        intent.removeExtra(NetworkMonitoringService.EXTRA_MUTE_APP_NAME)
+                                        intent.removeExtra(NetworkMonitoringService.EXTRA_DISMISS_NOTIFICATION_ID)
+                                        if (intent.action == NetworkMonitoringService.ACTION_IGNORE_APP) {
+                                            intent.action = null
                                         }
+
+                                        setCurrentIntent(null)
                                     }
+                                }
 
-                                    // --- Notification Extra / Deep Link Handling ---
-                                    val navigateToAlerts = currentIntent?.getBooleanExtra(NetworkMonitoringService.EXTRA_NAVIGATE_TO_ALERTS, false) ?: false
-                                    val navigateToLimits = currentIntent?.getBooleanExtra(NetworkMonitoringService.EXTRA_NAVIGATE_TO_LIMITS, false) ?: false
-
-                                    val initialDestination = when {
-                                        navigateToLimits -> Destination.Limits
-                                        navigateToAlerts -> Destination.Alerts
-                                        else -> Destination.Home
-                                    }
-
-                                    val muteAppName = currentIntent?.getStringExtra(NetworkMonitoringService.EXTRA_MUTE_APP_NAME)
-                                    val dismissNotificationId = currentIntent?.getIntExtra(NetworkMonitoringService.EXTRA_DISMISS_NOTIFICATION_ID, -1) ?: -1
-                                    val isIgnoreAction = currentIntent?.action == NetworkMonitoringService.ACTION_IGNORE_APP
-
-                                    // Process incoming intent actions (such as clicking "Ignore App" directly from an alert notification).
-                                    LaunchedEffect(currentIntent) {
-                                        if (muteAppName != null) {
-                                            if (isIgnoreAction) {
-                                                if (dismissNotificationId != -1) {
-                                                    try {
-                                                        val manager = getSystemService(android.app.NotificationManager::class.java)
-                                                        manager?.cancel(dismissNotificationId)
-                                                    } catch (e: Exception) {
-                                                        Log.e("MainActivity", "Failed to cancel notification", e)
-                                                    }
+                                MainScreen(
+                                    homeViewModel = homeViewModel,
+                                    appUsageViewModel = appUsageViewModel,
+                                    alertsViewModel = alertsViewModel,
+                                    appLimitsViewModel = appLimitsViewModel,
+                                    settingsViewModel = settingsViewModel,
+                                    initialDestination = initialDestination,
+                                    onCheckForUpdates = {
+                                        Toast.makeText(context, R.string.toast_checking_updates, Toast.LENGTH_SHORT).show()
+                                        appUpdateHelper.checkForUpdates { result ->
+                                            when (result) {
+                                                is UpdateResult.PlayStoreUpdateAvailable -> {
+                                                    appUpdateManager?.startUpdateFlowForResult(
+                                                        result.appUpdateInfo,
+                                                        updateLauncher,
+                                                        AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build()
+                                                    )
+                                                }
+                                                is UpdateResult.GitHubUpdateAvailable -> {
+                                                    setGitHubUpdate(result)
+                                                }
+                                                is UpdateResult.NoUpdateAvailable -> {
+                                                    Toast.makeText(context, R.string.toast_app_up_to_date, Toast.LENGTH_SHORT).show()
+                                                }
+                                                is UpdateResult.Error -> {
+                                                    Toast.makeText(context, R.string.toast_update_check_failed, Toast.LENGTH_SHORT).show()
                                                 }
                                             }
-                                            alertsViewModel.onMuteRequested(muteAppName)
-
-                                            // Clear extras to avoid re-triggering the action if the activity is recreated.
-                                            intent.removeExtra(NetworkMonitoringService.EXTRA_MUTE_APP_NAME)
-                                            intent.removeExtra(NetworkMonitoringService.EXTRA_DISMISS_NOTIFICATION_ID)
-                                            if (intent.action == NetworkMonitoringService.ACTION_IGNORE_APP) {
-                                                intent.action = null
-                                            }
-
-                                            setCurrentIntent(null)
                                         }
                                     }
+                                )
 
-                                    MainScreen(
-                                        homeViewModel = homeViewModel,
-                                        appUsageViewModel = appUsageViewModel,
-                                        alertsViewModel = alertsViewModel,
-                                        appLimitsViewModel = appLimitsViewModel,
-                                        settingsViewModel = settingsViewModel,
-                                        initialDestination = initialDestination,
-                                        onCheckForUpdates = {
-                                            Toast.makeText(context, R.string.toast_checking_updates, Toast.LENGTH_SHORT).show()
-                                            appUpdateHelper.checkForUpdates { result ->
-                                                when (result) {
-                                                    is UpdateResult.PlayStoreUpdateAvailable -> {
-                                                        appUpdateManager?.startUpdateFlowForResult(
-                                                            result.appUpdateInfo,
-                                                            updateLauncher,
-                                                            AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build()
-                                                        )
-                                                    }
-                                                    is UpdateResult.GitHubUpdateAvailable -> {
-                                                        setGitHubUpdate(result)
-                                                    }
-                                                    is UpdateResult.NoUpdateAvailable -> {
-                                                        Toast.makeText(context, R.string.toast_app_up_to_date, Toast.LENGTH_SHORT).show()
-                                                    }
-                                                    is UpdateResult.Error -> {
-                                                        Toast.makeText(context, R.string.toast_update_check_failed, Toast.LENGTH_SHORT).show()
-                                                    }
-                                                }
+                                if (showChangelog) {
+                                    ChangelogDialog { setShowChangelog(false) }
+                                }
+
+                                gitHubUpdate?.let { update ->
+                                    UpdateDialog(
+                                        tagName = update.tag,
+                                        releaseNotes = update.releaseNotes,
+                                        onDismiss = { setGitHubUpdate(null) },
+                                        onIgnore = {
+                                            lifecycleScope.launch {
+                                                repository.setIgnoredUpdateVersion(update.tag)
                                             }
+                                            setGitHubUpdate(null)
+                                        },
+                                        onUpdate = {
+                                            val updateIntent = Intent(Intent.ACTION_VIEW, update.downloadUrl.toUri())
+                                            try {
+                                                startActivity(updateIntent)
+                                            } catch (_: Exception) {}
+                                            setGitHubUpdate(null)
                                         }
                                     )
-
-                                    if (showChangelog) {
-                                        ChangelogDialog { setShowChangelog(false) }
-                                    }
-
-                                    gitHubUpdate?.let { update ->
-                                        UpdateDialog(
-                                            tagName = update.tag,
-                                            releaseNotes = update.releaseNotes,
-                                            onDismiss = { setGitHubUpdate(null) },
-                                            onIgnore = {
-                                                lifecycleScope.launch {
-                                                    repository.setIgnoredUpdateVersion(update.tag)
-                                                }
-                                                setGitHubUpdate(null)
-                                            },
-                                            onUpdate = {
-                                                val updateIntent = Intent(Intent.ACTION_VIEW, update.downloadUrl.toUri())
-                                                try {
-                                                    startActivity(updateIntent)
-                                                } catch (_: Exception) {}
-                                                setGitHubUpdate(null)
-                                            }
-                                        )
-                                    }
+                                }
+                            } else {
+                                OnboardingScreen(
+                                    onComplete = {
+                                        onboardingViewModel.completeOnboarding()
+                                    },
+                                )
                             }
                         }
-                    } else {
-                        OnboardingScreen(
-                            onComplete = {
-                                onboardingViewModel.completeOnboarding()
-                            },
-                        )
                     }
                 }
             }
