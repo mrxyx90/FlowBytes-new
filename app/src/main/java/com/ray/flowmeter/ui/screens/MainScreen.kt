@@ -788,6 +788,7 @@ fun MainScreen(
 
         val isViewingSystemApps = appUsageViewModel.isViewingSystemApps
         val filteredSystemAppList by appUsageViewModel.filteredSystemAppUsageList.collectAsState()
+        val networkFilter by appUsageViewModel.networkFilter.collectAsState()
         val systemListState = rememberLazyListState()
 
         AnimatedVisibility(
@@ -810,8 +811,14 @@ fun MainScreen(
                     topBar = {
                         TopAppBar(
                             title = {
+                                val filterTitle = when (networkFilter) {
+                                    "four_g" -> stringResource(R.string.filter_four_g_only)
+                                    "mobile" -> stringResource(R.string.filter_mobile_only)
+                                    "wifi" -> stringResource(R.string.filter_wifi_only)
+                                    else -> stringResource(R.string.title_system_data_usage)
+                                }
                                 Text(
-                                    text = stringResource(R.string.title_system_data_usage),
+                                    text = filterTitle,
                                     fontWeight = FontWeight.Black,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -833,12 +840,11 @@ fun MainScreen(
                         )
                     }
                 ) { padding ->
-                    val networkFilter by appUsageViewModel.networkFilter.collectAsState()
-
                     val maxUsageBytes = if (filteredSystemAppList.isNotEmpty()) {
                         filteredSystemAppList.maxOf {
                             when (networkFilter) {
                                 "mobile" -> it.cellUsage
+                                "four_g" -> it.fourGUsage
                                 "wifi" -> it.wifiUsage
                                 else -> it.totalUsage
                             }
@@ -877,6 +883,7 @@ fun MainScreen(
                             ) { _, appUsage ->
                                 val displayUsage = when (networkFilter) {
                                     "mobile" -> appUsage.cellUsage
+                                    "four_g" -> appUsage.fourGUsage
                                     "wifi" -> appUsage.wifiUsage
                                     else -> appUsage.totalUsage
                                 }
