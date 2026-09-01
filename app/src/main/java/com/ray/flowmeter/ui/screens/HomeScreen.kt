@@ -42,7 +42,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.ray.flowmeter.utils.PermissionHelper
-import android.os.Build
 import androidx.compose.material.icons.rounded.Notifications
 
 @Composable
@@ -59,14 +58,10 @@ fun HomeScreen(
     var hasUsageAccess by remember { mutableStateOf(PermissionHelper.hasUsageAccess(context)) }
     var hasNotificationPermission by remember {
         mutableStateOf(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                androidx.core.content.ContextCompat.checkSelfPermission(
-                    context,
-                    android.Manifest.permission.POST_NOTIFICATIONS
-                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            } else {
-                true
-            }
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
         )
     }
 
@@ -82,14 +77,10 @@ fun HomeScreen(
                     }
                 }
 
-                hasNotificationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    androidx.core.content.ContextCompat.checkSelfPermission(
-                        context,
-                        android.Manifest.permission.POST_NOTIFICATIONS
-                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                } else {
-                    true
-                }
+                hasNotificationPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                    context,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -120,12 +111,12 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         userScrollEnabled = true
     ) {
-        if (!hasUsageAccess || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission)) {
+        if (!hasUsageAccess || !hasNotificationPermission) {
             item {
                 val warnings = remember(hasUsageAccess, hasNotificationPermission) {
                     buildList {
                         if (!hasUsageAccess) add(0) // Usage stats warning
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) add(1) // Notification warning
+                        if (!hasNotificationPermission) add(1) // Notification warning
                     }
                 }
 
@@ -156,9 +147,6 @@ fun HomeScreen(
                                 Row(
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
-                                        .also {
-                                            // Workaround layout hint to avoid compiler warning about unused import
-                                        }
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.WarningAmber,

@@ -5,7 +5,6 @@ package com.ray.flowmeter.ui.screens
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -51,11 +50,7 @@ fun OnboardingScreen(
     var usageAccessGranted by remember { mutableStateOf(hasUsageAccess(context)) }
 
     // Notification permission only needed on Android 13+
-    val notificationPermissionState = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        rememberPermissionState(android.Manifest.permission.POST_NOTIFICATIONS)
-    } else {
-        null
-    }
+    val notificationPermissionState = rememberPermissionState(android.Manifest.permission.POST_NOTIFICATIONS)
 
     val phoneStatePermissionState = rememberPermissionState(android.Manifest.permission.READ_PHONE_STATE)
 
@@ -81,7 +76,7 @@ fun OnboardingScreen(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
             // Get Started is locked until all three permissions are granted
-            val isEnabled = usageAccessGranted && (notificationPermissionState?.status?.isGranted != false) && isIgnoringBatteryOptimizations
+            val isEnabled = usageAccessGranted && (notificationPermissionState.status.isGranted) && isIgnoringBatteryOptimizations
             val interactionSource = remember { MutableInteractionSource() }
             
             Column(
@@ -204,17 +199,15 @@ fun OnboardingScreen(
                 }
             }
 
-            if (notificationPermissionState != null) {
-                Spacer(modifier = Modifier.height(16.dp))
-                StaggeredEntrance(index = 4) {
-                    PermissionItem(
-                        title = stringResource(R.string.label_notifications),
-                        description = stringResource(R.string.desc_notifications),
-                        icon = Icons.Rounded.Notifications,
-                        isGranted = notificationPermissionState.status.isGranted
-                    ) {
-                        notificationPermissionState.launchPermissionRequest()
-                    }
+            Spacer(modifier = Modifier.height(16.dp))
+            StaggeredEntrance(index = 4) {
+                PermissionItem(
+                    title = stringResource(R.string.label_notifications),
+                    description = stringResource(R.string.desc_notifications),
+                    icon = Icons.Rounded.Notifications,
+                    isGranted = notificationPermissionState.status.isGranted
+                ) {
+                    notificationPermissionState.launchPermissionRequest()
                 }
             }
 

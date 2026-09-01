@@ -1,8 +1,6 @@
 package com.ray.flowmeter.utils
 
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
 import android.util.Log
 import com.google.android.play.core.appupdate.AppUpdateInfo
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
@@ -138,12 +136,7 @@ class AppUpdateHelper(
 
     internal fun getInstallerPackageName(context: Context): String? {
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                context.packageManager.getInstallSourceInfo(context.packageName).installingPackageName
-            } else {
-                @Suppress("DEPRECATION")
-                context.packageManager.getInstallerPackageName(context.packageName)
-            }
+            context.packageManager.getInstallSourceInfo(context.packageName).installingPackageName
         } catch (e: Exception) {
             null
         }

@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.provider.Settings
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.ray.flowmeter.utils.PermissionHelper
@@ -55,9 +54,7 @@ fun SettingsScreen(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
         if (PermissionHelper.hasUsageAccess(context)) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
-            ) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             } else {
                 viewModel.toggleMonitoring(true)
@@ -126,7 +123,10 @@ fun SettingsScreen(
 
     val versionName = remember {
         try {
-            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val packageInfo = context.packageManager.getPackageInfo(
+                context.packageName,
+                android.content.pm.PackageManager.PackageInfoFlags.of(0L)
+            )
             packageInfo.versionName
         } catch (_: Exception) {
             "1.0.0"
@@ -172,9 +172,7 @@ fun SettingsScreen(
                                 if (!hasUsageStats) {
                                     val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                                     usageAccessLauncher.launch(intent)
-                                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                    androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
-                                ) {
+                                } else if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                                     notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                                 } else {
                                     viewModel.toggleMonitoring(true)

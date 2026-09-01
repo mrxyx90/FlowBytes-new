@@ -1,52 +1,54 @@
 package com.ray.flowmeter
 
 import android.content.Intent
+import android.net.VpnService
 import android.os.Bundle
+import android.util.Log
+import android.view.View
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import android.view.View
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.install.InstallStateUpdatedListener
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.InstallStatus
+import com.google.android.play.core.review.ReviewManagerFactory
 import com.ray.flowmeter.data.AlertRepository
 import com.ray.flowmeter.data.AppLimitRepository
 import com.ray.flowmeter.data.FlowMeterDatabase
 import com.ray.flowmeter.data.UserPreferencesRepository
+import com.ray.flowmeter.receiver.WidgetUpdateScheduler
 import com.ray.flowmeter.service.AppBlockVpnService
 import com.ray.flowmeter.service.NetworkMonitoringService
-import com.ray.flowmeter.receiver.WidgetUpdateScheduler
 import com.ray.flowmeter.ui.dialogs.ChangelogDialog
-import android.net.Uri
-import android.widget.Toast
-import com.google.android.play.core.appupdate.AppUpdateManager
-import com.google.android.play.core.appupdate.AppUpdateManagerFactory
-import com.google.android.play.core.install.InstallStateUpdatedListener
-import com.google.android.play.core.install.model.AppUpdateType
-import com.google.android.play.core.install.model.InstallStatus
-import com.google.android.play.core.install.model.UpdateAvailability
-import com.google.android.play.core.review.ReviewManagerFactory
-import android.util.Log
-import com.ray.flowmeter.utils.AppUpdateHelper
-import com.ray.flowmeter.utils.UpdateResult
 import com.ray.flowmeter.ui.dialogs.UpdateDialog
 import com.ray.flowmeter.ui.screens.Destination
 import com.ray.flowmeter.ui.screens.MainScreen
@@ -58,17 +60,13 @@ import com.ray.flowmeter.ui.viewmodels.AppUsageViewModel
 import com.ray.flowmeter.ui.viewmodels.HomeViewModel
 import com.ray.flowmeter.ui.viewmodels.OnboardingViewModel
 import com.ray.flowmeter.ui.viewmodels.SettingsViewModel
+import com.ray.flowmeter.utils.AppUpdateHelper
 import com.ray.flowmeter.utils.LocaleHelper
-import kotlin.time.Duration.Companion.milliseconds
+import com.ray.flowmeter.utils.UpdateResult
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import android.net.VpnService
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import kotlin.time.Duration.Companion.milliseconds
 
 // Main entry activity. Handles app startup, database/repository initialization,
 // Compose UI hosting, and orchestration of background monitoring and VPN blocking services.
@@ -91,7 +89,7 @@ class MainActivity : ComponentActivity() {
             Toast.LENGTH_LONG
         ).show()
         lifecycleScope.launch {
-            delay(3000)
+            delay(3000.milliseconds)
             appUpdateManager?.completeUpdate()
         }
     }
@@ -108,6 +106,12 @@ class MainActivity : ComponentActivity() {
             kotlinx.coroutines.MainScope().launch {
                 repository.setAppBlockingMasterEnabled(false)
             }
+        }
+    }
+
+    private val updateLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        if (result.resultCode != RESULT_OK) {
+            Log.e("MainActivity", "Update flow failed! Result code: ${result.resultCode}")
         }
     }
 
@@ -309,12 +313,10 @@ class MainActivity : ComponentActivity() {
                                 appUpdateHelper.checkForUpdates { result ->
                                     when (result) {
                                         is UpdateResult.PlayStoreUpdateAvailable -> {
-                                            @Suppress("DEPRECATION")
                                             appUpdateManager?.startUpdateFlowForResult(
                                                 result.appUpdateInfo,
-                                                AppUpdateType.FLEXIBLE,
-                                                this@MainActivity,
-                                                UPDATE_REQUEST_CODE
+                                                updateLauncher,
+                                                AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build()
                                             )
                                         }
                                         is UpdateResult.GitHubUpdateAvailable -> {
@@ -495,12 +497,10 @@ class MainActivity : ComponentActivity() {
                                             appUpdateHelper.checkForUpdates { result ->
                                                 when (result) {
                                                     is UpdateResult.PlayStoreUpdateAvailable -> {
-                                                        @Suppress("DEPRECATION")
                                                         appUpdateManager?.startUpdateFlowForResult(
                                                             result.appUpdateInfo,
-                                                            AppUpdateType.FLEXIBLE,
-                                                            this@MainActivity,
-                                                            UPDATE_REQUEST_CODE
+                                                            updateLauncher,
+                                                            AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build()
                                                         )
                                                     }
                                                     is UpdateResult.GitHubUpdateAvailable -> {
@@ -533,7 +533,7 @@ class MainActivity : ComponentActivity() {
                                                 setGitHubUpdate(null)
                                             },
                                             onUpdate = {
-                                                val updateIntent = Intent(Intent.ACTION_VIEW, Uri.parse(gitHubUpdate.downloadUrl))
+                                                val updateIntent = Intent(Intent.ACTION_VIEW, gitHubUpdate.downloadUrl.toUri())
                                                 try {
                                                     startActivity(updateIntent)
                                                 } catch (_: Exception) {}
@@ -570,20 +570,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         appUpdateManager?.unregisterListener(installStateUpdatedListener)
     }
-
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        @Suppress("DEPRECATION")
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == UPDATE_REQUEST_CODE) {
-            if (resultCode != RESULT_OK) {
-                Log.e("MainActivity", "Update flow failed! Result code: $resultCode")
-            }
-        }
-    }
 }
-
-private const val UPDATE_REQUEST_CODE = 9999
 
 private data class ThemeSettings(
     val themeMode: String,
