@@ -1482,7 +1482,7 @@ class NetworkMonitoringService : Service() {
                     val wifiUsage = getUidUsageForTransport(networkStatsManager, uid, startTime, currentTime, NetworkCapabilities.TRANSPORT_WIFI)
                     val mobileUsage = getUidUsageForTransport(networkStatsManager, uid, startTime, currentTime, NetworkCapabilities.TRANSPORT_CELLULAR)
                     
-                    val fourGUsage = if (limit.networkType == "four_g") {
+                    val fourGUsage = if (limit.isFourGEnabled()) {
                         val sessions = fourGRepository.getSessionsInRange(startTime, currentTime)
                         var total = 0L
                         for (session in sessions) {
@@ -1500,7 +1500,7 @@ class NetworkMonitoringService : Service() {
                                        else if (limit.isMobileEnabled() && !limit.isWifiEnabled()) mobileUsage
                                        else wifiUsage + mobileUsage
 
-                    if (wifiUsage != limit.currentWifiUsage || mobileUsage != limit.currentMobileUsage) {
+                    if (wifiUsage != limit.currentWifiUsage || mobileUsage != limit.currentMobileUsage || currentUsage != limit.currentUsage) {
                         var updatedLimit = limit.copy(
                             currentUsage = currentUsage,
                             currentWifiUsage = wifiUsage,
@@ -1511,7 +1511,7 @@ class NetworkMonitoringService : Service() {
 
                         // Check Wifi
                         if (limit.isWifiEnabled()) {
-                            val wifiOver = (limit.wifiDataLimit > 0L && wifiUsage >= limit.wifiDataLimit)
+                            val wifiOver = limit.wifiDataLimit in 1..wifiUsage
                             if (wifiOver && !limit.isWifiBlocked) {
                                 sendAppLimitAlert(updatedLimit.copy(isWifiBlocked = true, networkType = "wifi", dataLimit = limit.wifiDataLimit))
                             }
@@ -1526,7 +1526,7 @@ class NetworkMonitoringService : Service() {
 
                         // Check Mobile
                         if (limit.isMobileEnabled()) {
-                            val mobileOver = (limit.mobileDataLimit > 0L && mobileUsage >= limit.mobileDataLimit)
+                            val mobileOver = limit.mobileDataLimit in 1..mobileUsage
                             if (mobileOver && !limit.isMobileBlocked) {
                                 sendAppLimitAlert(updatedLimit.copy(isMobileBlocked = true, networkType = "mobile", dataLimit = limit.mobileDataLimit))
                             }
@@ -1541,7 +1541,7 @@ class NetworkMonitoringService : Service() {
 
                         // Check 4G
                         if (limit.isFourGEnabled()) {
-                            val fourGOver = (limit.dataLimit > 0L && fourGUsage >= limit.dataLimit)
+                            val fourGOver = limit.dataLimit in 1..fourGUsage
                             if (fourGOver && !limit.isBlocked) {
                                 sendAppLimitAlert(updatedLimit.copy(isBlocked = true, networkType = "four_g", dataLimit = limit.dataLimit))
                             }

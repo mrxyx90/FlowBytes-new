@@ -443,13 +443,13 @@ fun MainScreen(
                                         
                                         val buttonBgColor by animateColorAsState(
                                             targetValue = if (appBlockingMasterEnabled) MaterialTheme.colorScheme.primaryContainer
-                                                          else Color.Transparent,
+                                                          else MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
                                             animationSpec = tween(300),
                                             label = "FirewallBackgroundColor"
                                         )
                                         val buttonContentColor by animateColorAsState(
                                             targetValue = if (appBlockingMasterEnabled) MaterialTheme.colorScheme.onPrimaryContainer
-                                                          else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                          else MaterialTheme.colorScheme.error,
                                             animationSpec = tween(300),
                                             label = "FirewallContentColor"
                                         )
@@ -735,6 +735,10 @@ fun MainScreen(
                                     appLimitsViewModel.isPickerOpen = false
                                 }
                             ) { limits ->
+                                val isFirewallOn = appLimitsViewModel.appBlockingMasterEnabled.value
+                                if (!isFirewallOn) {
+                                    android.widget.Toast.makeText(context, "Firewall is off please enable", android.widget.Toast.LENGTH_SHORT).show()
+                                }
                                 appLimitsViewModel.addAppLimits(limits)
                                 appLimitsViewModel.isPickerOpen = false
                             }

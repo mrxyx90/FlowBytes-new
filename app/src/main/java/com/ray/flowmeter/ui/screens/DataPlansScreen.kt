@@ -46,6 +46,7 @@ fun AppLimitsScreen(
     viewModel: AppLimitsViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var limitToDelete by remember { mutableStateOf<AppLimit?>(null) }
     var showAddGeneralLimitDialog by remember { mutableStateOf(false) }
 
@@ -87,7 +88,7 @@ fun AppLimitsScreen(
     val currentCustomWifiUsage by viewModel.currentCustomWifiUsage.collectAsState()
 
     val appLimits by viewModel.appLimits.collectAsState()
-    // No longer used: val appBlockingMasterEnabled by viewModel.appBlockingMasterEnabled.collectAsState()
+    val appBlockingMasterEnabled by viewModel.appBlockingMasterEnabled.collectAsState()
 
     val unconfiguredPlans = remember(dataDailyLimitConfigured, dataMonthlyLimitConfigured, wifiDailyLimitConfigured, fourGDailyLimitConfigured, wifiMonthlyLimitConfigured, dataCustomLimitConfigured, wifiCustomLimitConfigured) {
         buildList {
@@ -377,8 +378,18 @@ fun AppLimitsScreen(
                         StaggeredEntrance(index = activePlansList.size + index) {
                             AppLimitItem(
                                 limit = limit,
-                                onToggle = { enabled -> viewModel.updateAppLimit(limit.copy(isEnabled = enabled)) },
-                                onToggleManualBlock = { blocked -> viewModel.updateAppLimit(limit.copy(isManuallyBlocked = blocked)) },
+                                onToggle = { enabled -> 
+                                    if (enabled && !appBlockingMasterEnabled) {
+                                        android.widget.Toast.makeText(context, "Firewall is off please enable", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                    viewModel.updateAppLimit(limit.copy(isEnabled = enabled)) 
+                                },
+                                onToggleManualBlock = { blocked -> 
+                                    if (blocked && !appBlockingMasterEnabled) {
+                                        android.widget.Toast.makeText(context, "Firewall is off please enable", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                    viewModel.updateAppLimit(limit.copy(isManuallyBlocked = blocked)) 
+                                },
                                 onDelete = { limitToDelete = limit },
                                 onEdit = { viewModel.editingLimit = limit }
                             )
@@ -449,6 +460,9 @@ fun AppLimitsScreen(
 
 @Composable
 fun AppLimitsOverlay(viewModel: AppLimitsViewModel) {
+    val context = LocalContext.current
+    val appBlockingMasterEnabled by viewModel.appBlockingMasterEnabled.collectAsState()
+    
     val editingLimit = viewModel.editingLimit
     val configuringGeneralLimitType = viewModel.configuringGeneralLimitType
 
@@ -471,6 +485,9 @@ fun AppLimitsOverlay(viewModel: AppLimitsViewModel) {
             limit = editingLimit,
             onBack = { viewModel.editingLimit = null },
         ) { updatedLimit ->
+            if (!appBlockingMasterEnabled) {
+                android.widget.Toast.makeText(context, "Firewall is off please enable", android.widget.Toast.LENGTH_SHORT).show()
+            }
             viewModel.updateAppLimit(updatedLimit)
             viewModel.editingLimit = null
         }
@@ -505,6 +522,9 @@ fun AppLimitsOverlay(viewModel: AppLimitsViewModel) {
             initialEnd = initialEnd,
             onBack = { viewModel.configuringGeneralLimitType = null },
             onConfirm = { limitBytes, start, end ->
+                if (!appBlockingMasterEnabled) {
+                    android.widget.Toast.makeText(context, "Firewall is off please enable", android.widget.Toast.LENGTH_SHORT).show()
+                }
                 when (configuringGeneralLimitType) {
                     "daily_wifi" -> {
                         viewModel.setWifiDailyLimit(limitBytes)

@@ -2,7 +2,6 @@ package com.ray.flowmeter.service
 
 import android.annotation.SuppressLint
 import android.content.Context
-import com.ray.flowmeter.R
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
@@ -11,18 +10,22 @@ import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import com.ray.flowmeter.R
 import com.ray.flowmeter.data.AppLimit
 import com.ray.flowmeter.data.AppLimitRepository
 import com.ray.flowmeter.data.FlowMeterDatabase
 import com.ray.flowmeter.data.UserPreferencesRepository
 import com.ray.flowmeter.utils.LocaleHelper
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 // VPN Service that intercepts and blocks network traffic for applications
 // that have exceeded their configured cellular or Wi-Fi data usage limits.

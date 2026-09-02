@@ -832,10 +832,10 @@ fun BatchConfigurationContent(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1.2f)) {
+                        Column(modifier = Modifier.weight(1.3f)) {
                             Text(stringResource(R.string.label_network_type), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 MiniChip(
                                     selected = currentAppNetworkTypes.contains("wifi"),
                                     onClick = {
@@ -863,10 +863,10 @@ fun BatchConfigurationContent(
                             }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(0.8f)) {
+                        Column(modifier = Modifier.weight(0.7f)) {
                             Text(stringResource(R.string.label_limit_period), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 MiniChip(
                                     selected = currentAppLimitType == "daily",
                                     onClick = { appLimitTypes[app.packageName] = "daily" },
