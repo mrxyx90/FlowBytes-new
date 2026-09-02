@@ -431,23 +431,23 @@ fun MainScreen(
                                     if (activeLayoutDestination == Destination.Limits) {
                                         val appBlockingMasterEnabled by appLimitsViewModel.appBlockingMasterEnabled.collectAsState()
                                         
-                                        // Expanding pulse animation for when firewall is OFF
+                                        // Blooming pulse animation for when firewall is OFF
                                         val infiniteTransition = rememberInfiniteTransition(label = "FirewallPulse")
                                         val pulseScale by infiniteTransition.animateFloat(
                                             initialValue = 1.0f,
-                                            targetValue = 1.35f,
+                                            targetValue = 1.20f,
                                             animationSpec = infiniteRepeatable(
-                                                animation = tween(1500, easing = FastOutSlowInEasing),
-                                                repeatMode = RepeatMode.Restart
+                                                animation = tween(1000, easing = EaseInOutCubic),
+                                                repeatMode = RepeatMode.Reverse
                                             ),
                                             label = "PulseScale"
                                         )
                                         val pulseAlpha by infiniteTransition.animateFloat(
-                                            initialValue = 0.45f,
-                                            targetValue = 0.0f,
+                                            initialValue = 0.25f,
+                                            targetValue = 0.45f,
                                             animationSpec = infiniteRepeatable(
-                                                animation = tween(1500, easing = FastOutSlowInEasing),
-                                                repeatMode = RepeatMode.Restart
+                                                animation = tween(1000, easing = EaseInOutCubic),
+                                                repeatMode = RepeatMode.Reverse
                                             ),
                                             label = "PulseAlpha"
                                         )
@@ -456,7 +456,7 @@ fun MainScreen(
 
                                         val buttonBgColor by animateColorAsState(
                                             targetValue = if (appBlockingMasterEnabled) MaterialTheme.colorScheme.primaryContainer
-                                                          else firewallRed.copy(alpha = 0.15f), // Constant small base glow
+                                                          else Color.Transparent, // Single layer drawn via drawBehind
                                             animationSpec = tween(300),
                                             label = "FirewallBackgroundColor"
                                         )
