@@ -32,15 +32,21 @@ fun AppLimitEditScreen(
     onConfirm: (AppLimit) -> Unit,
 ) {
     val initialData = remember(limit) { UnitUtils.bytesToUiState(limit.dataLimit) }
-    val (limitInput, setLimitInput) = remember(limit) { mutableStateOf(initialData.first) }
+    val (limitInput, setLimitInput) = remember(limit) { 
+        mutableStateOf(if (limit.dataLimit <= 0L) "100" else initialData.first) 
+    }
     val (limitUnit, setLimitUnit) = remember(limit) { mutableStateOf(initialData.second) }
 
     val initialWifi = remember(limit) { UnitUtils.bytesToUiState(limit.wifiDataLimit) }
-    val (wifiLimitInput, setWifiLimitInput) = remember(limit) { mutableStateOf(initialWifi.first) }
+    val (wifiLimitInput, setWifiLimitInput) = remember(limit) { 
+        mutableStateOf(if (limit.wifiDataLimit <= 0L) "100" else initialWifi.first) 
+    }
     val (wifiLimitUnit, setWifiLimitUnit) = remember(limit) { mutableStateOf(initialWifi.second) }
 
     val initialMobile = remember(limit) { UnitUtils.bytesToUiState(limit.mobileDataLimit) }
-    val (mobileLimitInput, setMobileLimitInput) = remember(limit) { mutableStateOf(initialMobile.first) }
+    val (mobileLimitInput, setMobileLimitInput) = remember(limit) { 
+        mutableStateOf(if (limit.mobileDataLimit <= 0L) "100" else initialMobile.first) 
+    }
     val (mobileLimitUnit, setMobileLimitUnit) = remember(limit) { mutableStateOf(initialMobile.second) }
 
     val (limitType, setLimitType) = remember(limit) { mutableStateOf(limit.limitType) }

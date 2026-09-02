@@ -275,12 +275,30 @@ class NetworkMonitoringService : Service() {
                 isFirst = false
             } 
         }
-        serviceScope.launch { repository.highTrafficDetectionEnabled.collect { highTrafficDetectionEnabled = it } }
+        serviceScope.launch {
+            repository.highTrafficDetectionEnabled.collect { highTrafficDetectionEnabled = it }
+        }
         serviceScope.launch { repository.trafficThresholdSpeed.collect { trafficThresholdSpeed = it } }
         serviceScope.launch { repository.trafficThresholdTime.collect { trafficThresholdTime = it } }
         serviceScope.launch { repository.trafficAlertCooldown.collect { trafficAlertCooldown = it } }
         serviceScope.launch { repository.trafficResetBelowThresholdTime.collect { trafficResetBelowThresholdTime = it } }
         serviceScope.launch { repository.trafficResetSpeed.collect { trafficResetSpeed = it } }
+
+        // Automatically start/stop VPN service based on master toggle in background.
+        serviceScope.launch {
+            repository.appBlockingMasterEnabled.collect { enabled ->
+                val vpnIntent = Intent(this@NetworkMonitoringService, AppBlockVpnService::class.java)
+                if (enabled) {
+                    try {
+                        startService(vpnIntent)
+                    } catch (e: Exception) {
+                        Log.e("NetworkMonitoringService", "Failed to start VPN service", e)
+                    }
+                } else {
+                    stopService(vpnIntent)
+                }
+            }
+        }
 
         serviceScope.launch(Dispatchers.IO) {
             val sixtyDaysAgo = System.currentTimeMillis() - (60L * 24 * 60 * 60 * 1000)
@@ -1391,6 +1409,7 @@ class NetworkMonitoringService : Service() {
         
         if (onlyNumeric) {
             // Only fetch usage for apps that have a numeric limit (> 0) that can be "exceeded"
+            // Apps with 0MB or Manually Blocked are handled instantly by the VPN logic.
             limits = limits.filter { limit ->
                 val hasActiveNumericLimit = 
                     (limit.isWifiEnabled() && limit.wifiDataLimit > 0L) ||
@@ -1398,6 +1417,17 @@ class NetworkMonitoringService : Service() {
                     (limit.isFourGEnabled() && limit.dataLimit > 0L)
                 
                 limit.isEnabled && !limit.isManuallyBlocked && hasActiveNumericLimit
+            }
+        } else {
+            // Even in full check, skip usage calculation for apps that are already "Permanently" blocked
+            // as their usage doesn't matter for the firewall state.
+            limits = limits.filter { limit ->
+                val isPermanentlyBlocked = limit.isManuallyBlocked || 
+                    (limit.isWifiEnabled() && limit.wifiDataLimit == 0L) ||
+                    (limit.isMobileEnabled() && limit.mobileDataLimit == 0L) ||
+                    (limit.isFourGEnabled() && limit.dataLimit == 0L)
+                
+                limit.isEnabled && !isPermanentlyBlocked
             }
         }
         
@@ -1481,7 +1511,7 @@ class NetworkMonitoringService : Service() {
 
                         // Check Wifi
                         if (limit.isWifiEnabled()) {
-                            val wifiOver = (wifiUsage >= limit.wifiDataLimit)
+                            val wifiOver = (limit.wifiDataLimit > 0L && wifiUsage >= limit.wifiDataLimit)
                             if (wifiOver && !limit.isWifiBlocked) {
                                 sendAppLimitAlert(updatedLimit.copy(isWifiBlocked = true, networkType = "wifi", dataLimit = limit.wifiDataLimit))
                             }
@@ -1496,7 +1526,7 @@ class NetworkMonitoringService : Service() {
 
                         // Check Mobile
                         if (limit.isMobileEnabled()) {
-                            val mobileOver = (mobileUsage >= limit.mobileDataLimit)
+                            val mobileOver = (limit.mobileDataLimit > 0L && mobileUsage >= limit.mobileDataLimit)
                             if (mobileOver && !limit.isMobileBlocked) {
                                 sendAppLimitAlert(updatedLimit.copy(isMobileBlocked = true, networkType = "mobile", dataLimit = limit.mobileDataLimit))
                             }
@@ -1511,7 +1541,7 @@ class NetworkMonitoringService : Service() {
 
                         // Check 4G
                         if (limit.isFourGEnabled()) {
-                            val fourGOver = (fourGUsage >= limit.dataLimit)
+                            val fourGOver = (limit.dataLimit > 0L && fourGUsage >= limit.dataLimit)
                             if (fourGOver && !limit.isBlocked) {
                                 sendAppLimitAlert(updatedLimit.copy(isBlocked = true, networkType = "four_g", dataLimit = limit.dataLimit))
                             }

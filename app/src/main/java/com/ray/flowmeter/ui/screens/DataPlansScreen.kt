@@ -574,8 +574,9 @@ fun AppLimitItem(
     val wifiColor = MaterialTheme.colorScheme.secondary
     val mobileColor = MaterialTheme.colorScheme.tertiary
 
-    val isWifiOver = limit.isEnabled && limit.wifiDataLimit > 0 && limit.currentWifiUsage >= limit.wifiDataLimit
-    val isMobileOver = limit.isEnabled && limit.mobileDataLimit > 0 && limit.currentMobileUsage >= limit.mobileDataLimit
+    val isWifiOver = limit.isEnabled && limit.isWifiEnabled() && limit.wifiDataLimit > 0 && limit.currentWifiUsage >= limit.wifiDataLimit
+    val isMobileOver = limit.isEnabled && limit.isMobileEnabled() && limit.mobileDataLimit > 0 && limit.currentMobileUsage >= limit.mobileDataLimit
+    val isFourGOver = limit.isEnabled && limit.isFourGEnabled() && limit.dataLimit > 0 && limit.currentUsage >= limit.dataLimit
 
     Card(
         modifier = Modifier
@@ -652,7 +653,7 @@ fun AppLimitItem(
                         )
                     }
                     
-                    if (limit.isEnabled && (isWifiOver || isMobileOver)) {
+                    if (limit.isEnabled && (isWifiOver || isMobileOver || isFourGOver)) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -751,7 +752,7 @@ fun AppLimitItem(
                                 .fillMaxHeight()
                                 .fillMaxWidth(wifiProgress)
                                 .background(
-                                    color = if (limit.wifiDataLimit > 0 && limit.currentWifiUsage >= limit.wifiDataLimit) MaterialTheme.colorScheme.error else wifiColor,
+                                    color = if (isWifiOver) MaterialTheme.colorScheme.error else wifiColor,
                                     shape = CircleShape
                                 )
                         )
@@ -767,7 +768,7 @@ fun AppLimitItem(
                         Box(
                             modifier = Modifier
                                 .background(
-                                    color = if (limit.wifiDataLimit > 0 && limit.currentWifiUsage >= limit.wifiDataLimit) MaterialTheme.colorScheme.errorContainer
+                                    color = if (isWifiOver) MaterialTheme.colorScheme.errorContainer
                                             else wifiColor.copy(alpha = 0.1f),
                                 shape = RoundedCornerShape(8.dp)
                             )
@@ -777,7 +778,7 @@ fun AppLimitItem(
                                 text = "${(wifiProgress * 100).toInt()}%",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = if (limit.wifiDataLimit > 0 && limit.currentWifiUsage >= limit.wifiDataLimit) MaterialTheme.colorScheme.onErrorContainer else wifiColor
+                                color = if (isWifiOver) MaterialTheme.colorScheme.onErrorContainer else wifiColor
                             )
                         }
                         
@@ -832,7 +833,7 @@ fun AppLimitItem(
                                 .fillMaxHeight()
                                 .fillMaxWidth(mobileProgress)
                                 .background(
-                                    color = if (limit.mobileDataLimit > 0 && limit.currentMobileUsage >= limit.mobileDataLimit) MaterialTheme.colorScheme.error else mobileColor,
+                                    color = if (isMobileOver) MaterialTheme.colorScheme.error else mobileColor,
                                     shape = CircleShape
                                 )
                         )
@@ -848,7 +849,7 @@ fun AppLimitItem(
                         Box(
                             modifier = Modifier
                                 .background(
-                                    color = if (limit.mobileDataLimit > 0 && limit.currentMobileUsage >= limit.mobileDataLimit) MaterialTheme.colorScheme.errorContainer
+                                    color = if (isMobileOver) MaterialTheme.colorScheme.errorContainer
                                             else mobileColor.copy(alpha = 0.1f),
                                     shape = RoundedCornerShape(8.dp)
                                 )
@@ -858,7 +859,7 @@ fun AppLimitItem(
                                 text = "${(mobileProgress * 100).toInt()}%",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = if (limit.mobileDataLimit > 0 && limit.currentMobileUsage >= limit.mobileDataLimit) MaterialTheme.colorScheme.onErrorContainer else mobileColor
+                                color = if (isMobileOver) MaterialTheme.colorScheme.onErrorContainer else mobileColor
                             )
                         }
                         
@@ -914,7 +915,7 @@ fun AppLimitItem(
                                 .fillMaxHeight()
                                 .fillMaxWidth(fourGProgress)
                                 .background(
-                                    color = if (limit.dataLimit > 0 && limit.currentUsage >= limit.dataLimit) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                    color = if (isFourGOver) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                                     shape = CircleShape
                                 )
                         )
@@ -930,7 +931,7 @@ fun AppLimitItem(
                         Box(
                             modifier = Modifier
                                 .background(
-                                    color = if (limit.dataLimit > 0 && limit.currentUsage >= limit.dataLimit) MaterialTheme.colorScheme.errorContainer
+                                    color = if (isFourGOver) MaterialTheme.colorScheme.errorContainer
                                             else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                                     shape = RoundedCornerShape(8.dp)
                                 )
@@ -940,7 +941,7 @@ fun AppLimitItem(
                                 text = "${(fourGProgress * 100).toInt()}%",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = if (limit.dataLimit > 0 && limit.currentUsage >= limit.dataLimit) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.primary
+                                color = if (isFourGOver) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.primary
                             )
                         }
                         

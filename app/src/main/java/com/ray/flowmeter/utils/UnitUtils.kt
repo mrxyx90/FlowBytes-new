@@ -9,10 +9,10 @@ object UnitUtils {
 
     /**
      * Converts a byte value to a pair of (string value, unit) for UI inputs.
-     * If the value is 0 or less, it returns ("100", "MB") as a default.
+     * If the value is 0 or less, it returns ("0", "MB").
      */
     fun bytesToUiState(bytes: Long): Pair<String, String> {
-        if (bytes <= 0L) return "100" to "MB"
+        if (bytes <= 0L) return "0" to "MB"
         val isGB = (bytes >= GB_IN_BYTES) && (bytes % GB_IN_BYTES == 0L)
         val value = if (isGB) bytes / GB_IN_BYTES else bytes / MB_IN_BYTES
         return value.toString() to (if (isGB) "GB" else "MB")

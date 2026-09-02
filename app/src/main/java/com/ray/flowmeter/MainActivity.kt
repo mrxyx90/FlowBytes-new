@@ -1,7 +1,6 @@
 package com.ray.flowmeter
 
 import android.content.Intent
-import android.net.VpnService
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -46,7 +45,6 @@ import com.ray.flowmeter.data.AppLimitRepository
 import com.ray.flowmeter.data.FlowMeterDatabase
 import com.ray.flowmeter.data.UserPreferencesRepository
 import com.ray.flowmeter.receiver.WidgetUpdateScheduler
-import com.ray.flowmeter.service.AppBlockVpnService
 import com.ray.flowmeter.service.NetworkMonitoringService
 import com.ray.flowmeter.ui.dialogs.ChangelogDialog
 import com.ray.flowmeter.ui.dialogs.UpdateDialog
@@ -69,7 +67,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 // Main entry activity. Handles app startup, database/repository initialization,
-// Compose UI hosting, and orchestration of background monitoring and VPN blocking services.
+// Compose UI hosting, and orchestration of background monitoring.
 class MainActivity : ComponentActivity() {
 
     private var currentAppliedLanguage: String = ""
@@ -94,39 +92,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // --- VPN Permission & Startup Orchestration ---
-    
-    // Result launcher to handle the user's response to the system VPN permission dialog.
-    private val vpnRequestLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            startVpnService()
-        } else {
-            // Revert the setting if permission was denied by the user.
-            val repository = UserPreferencesRepository(applicationContext)
-            kotlinx.coroutines.MainScope().launch {
-                repository.setAppBlockingMasterEnabled(enabled = false)
-            }
-        }
-    }
-
     private val updateLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         if (result.resultCode != RESULT_OK) {
             Log.e("MainActivity", "Update flow failed! Result code: ${result.resultCode}")
-        }
-    }
-
-    private fun startVpnService() {
-        val intent = Intent(this, AppBlockVpnService::class.java)
-        startService(intent)
-    }
-
-    // Requests system VPN permission if needed, otherwise starts the VPN directly.
-    private fun prepareVpn() {
-        val vpnIntent = VpnService.prepare(this)
-        if (vpnIntent != null) {
-            vpnRequestLauncher.launch(vpnIntent)
-        } else {
-            startVpnService()
         }
     }
 
@@ -143,9 +111,10 @@ class MainActivity : ComponentActivity() {
 
         val repository = UserPreferencesRepository(applicationContext)
 
-        // Keep the splash screen visible until theme settings are loaded to prevent content overlap.
+        // Keep the splash screen visible until theme settings and onboarding state are loaded to prevent content overlap.
         var isReady = false
         splashScreen.setKeepOnScreenCondition { !isReady }
+
         appUpdateHelper = AppUpdateHelper(this, repository)
         if (appUpdateHelper.getInstallerPackageName(this) == "com.android.vending") {
             val manager = AppUpdateManagerFactory.create(this)
@@ -354,7 +323,6 @@ class MainActivity : ComponentActivity() {
                         ) {
                             if (onboardingCompleted) {
                                 val monitoringEnabled by settingsViewModel.monitoringEnabled.collectAsState()
-                                val appBlockingMasterEnabled by settingsViewModel.appBlockingMasterEnabled.collectAsState()
 
                                 // Monitor the foreground tracking service lifecycle based on user settings.
                                 LaunchedEffect(monitoringEnabled) {
@@ -366,7 +334,6 @@ class MainActivity : ComponentActivity() {
                                             }
                                         } else {
                                             stopService(serviceIntent)
-                                            stopService(Intent(this@MainActivity, AppBlockVpnService::class.java))
                                         }
                                     }
                                 }
@@ -375,13 +342,6 @@ class MainActivity : ComponentActivity() {
 
                                 LaunchedEffect(widgetUpdateInterval) {
                                     WidgetUpdateScheduler.schedule(applicationContext, widgetUpdateInterval)
-                                }
-
-                                // Automatically start VPN blocking service if master controls are toggled on.
-                                LaunchedEffect(monitoringEnabled, appBlockingMasterEnabled) {
-                                    if (monitoringEnabled == true && appBlockingMasterEnabled == true) {
-                                        prepareVpn()
-                                    }
                                 }
 
                                 val (currentIntent, setCurrentIntent) = remember { mutableStateOf(intent) }

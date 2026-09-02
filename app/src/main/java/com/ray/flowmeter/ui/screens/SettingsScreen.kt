@@ -3,6 +3,7 @@
 package com.ray.flowmeter.ui.screens
 
 import android.content.Intent
+import android.net.VpnService
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -104,6 +105,14 @@ fun SettingsScreen(
             } else {
                 viewModel.toggleMonitoring(true)
             }
+        }
+    }
+
+    val vpnRequestLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            viewModel.toggleAppBlockingMaster(true)
         }
     }
 
@@ -444,11 +453,20 @@ fun SettingsScreen(
                 trailingContent = {
                     Switch(
                         checked = appBlockingMasterEnabled == true,
-                        onCheckedChange = {
-                            if (it && !vpnDisclosureAccepted) {
-                                showVpnDisclosure = true
+                        onCheckedChange = { enabled ->
+                            if (enabled) {
+                                if (!vpnDisclosureAccepted) {
+                                    showVpnDisclosure = true
+                                } else {
+                                    val vpnIntent = VpnService.prepare(context)
+                                    if (vpnIntent != null) {
+                                        vpnRequestLauncher.launch(vpnIntent)
+                                    } else {
+                                        viewModel.toggleAppBlockingMaster(true)
+                                    }
+                                }
                             } else {
-                                viewModel.toggleAppBlockingMaster(it)
+                                viewModel.toggleAppBlockingMaster(false)
                             }
                         },
                         colors = switchColors,
@@ -607,7 +625,12 @@ fun SettingsScreen(
             onDismiss = { showVpnDisclosure = false },
         ) {
             viewModel.setVpnDisclosureAccepted(accepted = true)
-            viewModel.toggleAppBlockingMaster(enabled = true)
+            val vpnIntent = VpnService.prepare(context)
+            if (vpnIntent != null) {
+                vpnRequestLauncher.launch(vpnIntent)
+            } else {
+                viewModel.toggleAppBlockingMaster(enabled = true)
+            }
             showVpnDisclosure = false
         }
     }
