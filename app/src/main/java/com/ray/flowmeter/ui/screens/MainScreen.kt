@@ -3,19 +3,8 @@
 package com.ray.flowmeter.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.EaseOutCubic
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -89,6 +78,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -441,15 +431,38 @@ fun MainScreen(
                                     if (activeLayoutDestination == Destination.Limits) {
                                         val appBlockingMasterEnabled by appLimitsViewModel.appBlockingMasterEnabled.collectAsState()
                                         
+                                        // Expanding pulse animation for when firewall is OFF
+                                        val infiniteTransition = rememberInfiniteTransition(label = "FirewallPulse")
+                                        val pulseScale by infiniteTransition.animateFloat(
+                                            initialValue = 1.0f,
+                                            targetValue = 1.35f,
+                                            animationSpec = infiniteRepeatable(
+                                                animation = tween(1500, easing = FastOutSlowInEasing),
+                                                repeatMode = RepeatMode.Restart
+                                            ),
+                                            label = "PulseScale"
+                                        )
+                                        val pulseAlpha by infiniteTransition.animateFloat(
+                                            initialValue = 0.45f,
+                                            targetValue = 0.0f,
+                                            animationSpec = infiniteRepeatable(
+                                                animation = tween(1500, easing = FastOutSlowInEasing),
+                                                repeatMode = RepeatMode.Restart
+                                            ),
+                                            label = "PulseAlpha"
+                                        )
+
+                                        val firewallRed = Color(0xFFFF1111)
+
                                         val buttonBgColor by animateColorAsState(
                                             targetValue = if (appBlockingMasterEnabled) MaterialTheme.colorScheme.primaryContainer
-                                                          else MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
+                                                          else firewallRed.copy(alpha = 0.15f), // Constant small base glow
                                             animationSpec = tween(300),
                                             label = "FirewallBackgroundColor"
                                         )
                                         val buttonContentColor by animateColorAsState(
                                             targetValue = if (appBlockingMasterEnabled) MaterialTheme.colorScheme.onPrimaryContainer
-                                                          else MaterialTheme.colorScheme.error,
+                                                          else firewallRed,
                                             animationSpec = tween(300),
                                             label = "FirewallContentColor"
                                         )
@@ -465,6 +478,14 @@ fun MainScreen(
                                             ),
                                             modifier = Modifier
                                                 .size(40.dp)
+                                                .drawBehind {
+                                                    if (!appBlockingMasterEnabled) {
+                                                        drawCircle(
+                                                            color = firewallRed.copy(alpha = pulseAlpha),
+                                                            radius = (size.minDimension / 2) * pulseScale
+                                                        )
+                                                    }
+                                                }
                                                 .clip(CircleShape)
                                         ) {
                                             Crossfade(
@@ -475,7 +496,8 @@ fun MainScreen(
                                                 Icon(
                                                     imageVector = if (enabled) Icons.Rounded.Security else Icons.Rounded.Shield,
                                                     contentDescription = stringResource(R.string.label_block_apps),
-                                                    modifier = Modifier.size(20.dp)
+                                                    modifier = Modifier.size(20.dp),
+                                                    tint = buttonContentColor
                                                 )
                                             }
                                         }
