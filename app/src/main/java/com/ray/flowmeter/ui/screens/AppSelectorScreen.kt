@@ -33,6 +33,7 @@ import com.ray.flowmeter.ui.theme.StaggeredEntrance
 import com.ray.flowmeter.ui.viewmodels.AppLimitsViewModel
 import androidx.compose.foundation.BorderStroke
 import com.ray.flowmeter.data.AppLimit
+import com.ray.flowmeter.utils.UnitUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -534,27 +535,18 @@ fun BatchConfigurationContent(
                 val limitsList = selectedApps.map { app ->
                     val appNetTypes = appNetworkTypes[app.packageName] ?: setOf("four_g")
                     val appNetTypeStr = appNetTypes.joinToString(",")
-                val appLimType = appLimitTypes[app.packageName] ?: "daily"
+                    val appLimType = appLimitTypes[app.packageName] ?: "daily"
 
-                val wifiVal = appWifiLimitsInput[app.packageName]?.toLongOrNull() ?: 100L
-                val wifiMultiplier = if (appWifiLimitsUnit[app.packageName] == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
-                
-                val mobileVal = appMobileLimitsInput[app.packageName]?.toLongOrNull() ?: 100L
-                val mobileMultiplier = if (appMobileLimitsUnit[app.packageName] == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
-
-                val fourGVal = appLimitsInput[app.packageName]?.toLongOrNull() ?: 100L
-                val fourGMultiplier = if (appLimitsUnit[app.packageName] == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
-
-                AppLimit(
-                    packageName = app.packageName,
-                    appName = app.name,
-                    dataLimit = if (appNetTypes.contains("four_g")) fourGVal * fourGMultiplier else 0L,
-                    limitType = appLimType,
-                    networkType = appNetTypeStr,
-                    wifiDataLimit = if (appNetTypes.contains("wifi")) wifiVal * wifiMultiplier else 0L,
-                    mobileDataLimit = if (appNetTypes.contains("mobile")) mobileVal * mobileMultiplier else 0L,
-                    isManuallyBlocked = appManuallyBlocked[app.packageName] ?: false
-                )
+                    AppLimit(
+                        packageName = app.packageName,
+                        appName = app.name,
+                        dataLimit = if (appNetTypes.contains("four_g")) UnitUtils.uiStateToBytes(appLimitsInput[app.packageName] ?: "100", appLimitsUnit[app.packageName] ?: "MB") else 0L,
+                        limitType = appLimType,
+                        networkType = appNetTypeStr,
+                        wifiDataLimit = if (appNetTypes.contains("wifi")) UnitUtils.uiStateToBytes(appWifiLimitsInput[app.packageName] ?: "100", appWifiLimitsUnit[app.packageName] ?: "MB") else 0L,
+                        mobileDataLimit = if (appNetTypes.contains("mobile")) UnitUtils.uiStateToBytes(appMobileLimitsInput[app.packageName] ?: "100", appMobileLimitsUnit[app.packageName] ?: "MB") else 0L,
+                        isManuallyBlocked = appManuallyBlocked[app.packageName] ?: false
+                    )
                 }
                 onConfirm(limitsList)
             }
@@ -977,11 +969,11 @@ fun ConfigurationContent(
     onLimitTypeChange: (String) -> Unit,
     networkType: Set<String>,
     onNetworkTypeChange: (Set<String>) -> Unit,
-    wifiLimitInput: String = "100",
+    wifiLimitInput: String,
     onWifiLimitInputChange: (String) -> Unit = {},
     wifiLimitUnit: String = "MB",
     onWifiLimitUnitChange: (String) -> Unit = {},
-    mobileLimitInput: String = "50",
+    mobileLimitInput: String,
     onMobileLimitInputChange: (String) -> Unit = {},
     mobileLimitUnit: String = "MB",
     onMobileLimitUnitChange: (String) -> Unit = {},
@@ -1094,11 +1086,11 @@ fun LimitConfigurationContent(
     onLimitTypeChange: (String) -> Unit,
     networkType: Set<String>,
     onNetworkTypeChange: (Set<String>) -> Unit,
-    wifiLimitInput: String = "100",
+    wifiLimitInput: String,
     onWifiLimitInputChange: (String) -> Unit = {},
     wifiLimitUnit: String = "MB",
     onWifiLimitUnitChange: (String) -> Unit = {},
-    mobileLimitInput: String = "50",
+    mobileLimitInput: String,
     onMobileLimitInputChange: (String) -> Unit = {},
     mobileLimitUnit: String = "MB",
     onMobileLimitUnitChange: (String) -> Unit = {}

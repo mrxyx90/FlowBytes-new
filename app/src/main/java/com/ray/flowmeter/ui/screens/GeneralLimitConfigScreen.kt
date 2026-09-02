@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.ray.flowmeter.R
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.ray.flowmeter.ui.theme.StaggeredEntrance
+import com.ray.flowmeter.utils.UnitUtils
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -72,17 +73,9 @@ fun GeneralLimitConfigScreen(
     onBack: () -> Unit,
     onConfirm: (limitBytes: Long, start: Long, end: Long) -> Unit
 ) {
-    val (limitInput, setLimitInput) = remember {
-        if (initialLimit <= 0L) {
-            mutableStateOf("")
-        } else {
-            val mb = initialLimit / (1024 * 1024)
-            mutableStateOf(if ((initialLimit % (1024 * 1024 * 1024)) == 0L) (initialLimit / (1024 * 1024 * 1024)).toString() else mb.toString())
-        }
-    }
-    val (limitUnit, setLimitUnit) = remember {
-        mutableStateOf(if ((initialLimit >= 1024L * 1024L * 1024L) && ((initialLimit % (1024L * 1024L * 1024L)) == 0L)) "GB" else "MB")
-    }
+    val initialData = remember(initialLimit) { UnitUtils.bytesToUiState(initialLimit) }
+    val (limitInput, setLimitInput) = remember(initialLimit) { mutableStateOf(initialData.first) }
+    val (limitUnit, setLimitUnit) = remember(initialLimit) { mutableStateOf(initialData.second) }
 
     val isCustom = planType.startsWith("custom")
     var customStart by remember { mutableLongStateOf(if (initialStart > 0) initialStart else System.currentTimeMillis()) }
@@ -294,10 +287,8 @@ fun GeneralLimitConfigScreen(
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            val v = limitInput.toLongOrNull() ?: 0L
-                            val multiplier = if (limitUnit == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
                             onConfirm(
-                                v * multiplier,
+                                UnitUtils.uiStateToBytes(limitInput, limitUnit),
                                 if (isCustom) customStart else 0L,
                                 if (isCustom) customEnd else 0L
                             )
