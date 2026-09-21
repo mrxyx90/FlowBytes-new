@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -52,6 +53,8 @@ import com.ray.flowmeter.ui.screens.Destination
 import com.ray.flowmeter.ui.screens.MainScreen
 import com.ray.flowmeter.ui.screens.OnboardingScreen
 import com.ray.flowmeter.ui.theme.FlowMeterTheme
+import com.ray.flowmeter.ui.theme.ThemeTransitionContainer
+import com.ray.flowmeter.ui.theme.ThemeTransitionKind
 import com.ray.flowmeter.ui.viewmodels.AlertsViewModel
 import com.ray.flowmeter.ui.viewmodels.AppLimitsViewModel
 import com.ray.flowmeter.ui.viewmodels.AppUsageViewModel
@@ -106,6 +109,29 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        splashScreen.setOnExitAnimationListener { splashScreenViewProvider ->
+            val iconView = splashScreenViewProvider.iconView
+            val splashView = splashScreenViewProvider.view
+
+            iconView.animate()
+                .scaleX(1.15f)
+                .scaleY(1.15f)
+                .alpha(0f)
+                .setDuration(250L)
+                .setInterpolator(android.view.animation.AccelerateInterpolator())
+                .start()
+
+            splashView.animate()
+                .alpha(0f)
+                .setDuration(250L)
+                .setInterpolator(android.view.animation.AccelerateInterpolator())
+                .withEndAction {
+                    splashScreenViewProvider.remove()
+                }
+                .start()
+        }
+
         // Lay out UI components edge-to-edge behind system status/navigation bars.
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -346,13 +372,35 @@ class MainActivity : ComponentActivity() {
 
                                 val (currentIntent, setCurrentIntent) = remember { mutableStateOf(intent) }
 
-                                // Listen for resume lifecycle events to update current intent (e.g. user clicked notification while app is running).
-                                val lifecycleOwner = LocalLifecycleOwner.current
-                                DisposableEffect(lifecycleOwner) {
-                                    val observer = LifecycleEventObserver { _, event ->
-                                        if (event == Lifecycle.Event.ON_RESUME) {
-                                            if (currentIntent != intent) {
-                                                setCurrentIntent(intent)
+                        ThemeTransitionContainer(
+                            defaultKind = ThemeTransitionKind.WIPE_RIGHT
+                        ) {
+                            FlowMeterTheme(
+                                themeMode = themeMode,
+                                useMaterialYou = useMaterialYou,
+                                useAmoled = useAmoled,
+                                accentColor = accentColor,
+                            ) {
+                                androidx.compose.material3.Surface(
+                                    modifier = Modifier.fillMaxSize(),
+                                    color = androidx.compose.material3.MaterialTheme.colorScheme.background
+                                ) {
+                                    if (onboardingCompleted == true) {
+                                        val (currentIntent, setCurrentIntent) = remember { mutableStateOf(intent) }
+
+                                        // Listen for resume lifecycle events to update current intent (e.g. user clicked notification while app is running).
+                                        val lifecycleOwner = LocalLifecycleOwner.current
+                                        DisposableEffect(lifecycleOwner) {
+                                            val observer = LifecycleEventObserver { _, event ->
+                                                if (event == Lifecycle.Event.ON_RESUME) {
+                                                    if (currentIntent != intent) {
+                                                        setCurrentIntent(intent)
+                                                    }
+                                                }
+                                            }
+                                            lifecycleOwner.lifecycle.addObserver(observer)
+                                            onDispose {
+                                                lifecycleOwner.lifecycle.removeObserver(observer)
                                             }
                                         }
                                     }

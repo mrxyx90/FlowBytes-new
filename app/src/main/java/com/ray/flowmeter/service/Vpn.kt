@@ -154,6 +154,9 @@ class AppBlockVpnService : VpnService() {
                     if (systemLimitExceeded) {
                         VpnBlockConfig(blockAll = true, blockedApps = emptyList())
                     } else {
+                        val isWifi = networkType == NetworkCapabilities.TRANSPORT_WIFI
+                        val isMobile = networkType == NetworkCapabilities.TRANSPORT_CELLULAR
+
                         val blockedApps = limits.filter { limit ->
                             // Rules for immediate blocking without usage check:
                             val isManual = limit.isManuallyBlocked
@@ -201,6 +204,13 @@ class AppBlockVpnService : VpnService() {
                 .setSession(getString(R.string.vpn_session_name))
                 .addAddress("10.0.0.2", 32)
                 .addRoute("0.0.0.0", 0)
+
+            try {
+                builder.addAddress("fd00::2", 128)
+                builder.addRoute("::", 0)
+            } catch (e: Exception) {
+                Log.w("AppBlockVpnService", "IPv6 VPN route setup skipped: ${e.message}")
+            }
 
             if (blockAll) {
                 builder.addDisallowedApplication("com.ray.flowmeter")

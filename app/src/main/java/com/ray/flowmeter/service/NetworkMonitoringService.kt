@@ -19,7 +19,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
-import android.graphics.drawable.Icon
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.IconCompat
 import androidx.core.graphics.withScale
@@ -141,8 +140,6 @@ class NetworkMonitoringService : Service() {
     private var hasAlertedCustomData = false
     private var hasAlertedCustomWifi = false
 
-    private var iconBitmap: Bitmap? = null
-    private var iconCanvas: Canvas? = null
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textAlign = Paint.Align.CENTER
@@ -341,6 +338,24 @@ class NetworkMonitoringService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Ignore app actions are handled in MainActivity's intent callbacks.
+        if (!isForeground) {
+            val initialLayout = RemoteViews(packageName, R.layout.notification_compact_speed)
+            initialLayout.setTextViewText(R.id.text_down, "0 KB/s")
+            initialLayout.setTextViewText(R.id.text_combined, "0 KB/s")
+            initialLayout.setTextViewText(R.id.text_up, "0 KB/s")
+            initialLayout.setViewVisibility(R.id.layout_usage, View.GONE)
+
+            safeStartForeground(createNotification(initialLayout, "0 KB/s"))
+            isForeground = true
+
+            serviceScope.launch {
+                updateDailyUsage()
+                delay(300.milliseconds)
+                updateStats(force = true)
+            }
+        }
+
+        // Ignore app actions are handled in MainActivity's intent callbacks.
         if (intent?.action == ACTION_IGNORE_APP) {
             return START_STICKY
         }
@@ -353,30 +368,6 @@ class NetworkMonitoringService : Service() {
                 ignoredApps[appName] = System.currentTimeMillis() + durationMs
             }
             return START_STICKY
-        }
-
-        if (isForeground) {
-            startMonitoring()
-            return START_STICKY
-        }
-
-        val initialLayout = RemoteViews(packageName, R.layout.notification_compact_speed)
-        initialLayout.setTextViewText(R.id.text_down, "0 KB/s")
-        initialLayout.setTextViewText(R.id.text_combined, "0 KB/s")
-        initialLayout.setTextViewText(R.id.text_up, "0 KB/s")
-        initialLayout.setViewVisibility(R.id.layout_usage, View.GONE)
-
-        try {
-            safeStartForeground(createNotification(initialLayout, "0 KB/s"))
-            isForeground = true
-            
-            serviceScope.launch {
-                updateDailyUsage()
-                delay(300.milliseconds)
-                updateStats(force = true)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
 
         cancelNetworkWakeup()
@@ -477,8 +468,6 @@ class NetworkMonitoringService : Service() {
         }
 
         serviceJob.cancel()
-        iconBitmap?.recycle()
-        iconBitmap = null
         try {
             unregisterReceiver(screenStateReceiver)
         } catch (_: Exception) {}
@@ -997,8 +986,6 @@ class NetworkMonitoringService : Service() {
     private fun createNotificationChannel() {
         val manager = getSystemService(NotificationManager::class.java) ?: return
 
-        val currentChannelId = if (highPriority) "SPEED_METER_V7_HIGH" else "SPEED_METER_V7_DEFAULT"
-
         try {
             val importance = if (highPriority) {
                 NotificationManager.IMPORTANCE_MAX
@@ -1006,16 +993,16 @@ class NetworkMonitoringService : Service() {
                 NotificationManager.IMPORTANCE_LOW
             }
 
-            val activeChannel = NotificationChannel(
-                currentChannelId,
+            val defaultChannel = NotificationChannel(
+                "SPEED_METER_V7_DEFAULT",
                 getString(R.string.channel_speed_monitor_name),
-                importance,
+                NotificationManager.IMPORTANCE_LOW,
             ).apply {
                 setShowBadge(false)
                 setSound(null, null)
                 enableLights(false)
                 enableVibration(false)
-                setBypassDnd(highPriority)
+                setBypassDnd(false)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 description = getString(R.string.channel_speed_monitor_desc)
             }
@@ -1030,20 +1017,21 @@ class NetworkMonitoringService : Service() {
                 lightColor = Color.RED
             }
 
-            manager.createNotificationChannel(activeChannel)
+            manager.createNotificationChannel(highChannel)
+            manager.createNotificationChannel(defaultChannel)
             manager.createNotificationChannel(alertChannel)
         } catch (e: Exception) {
             Log.e("NetworkMonitoringService", "Failed to create/delete notification channels", e)
         }
     }
 
-    private fun createSpeedIcon(speedText: String): Icon? {
-        val bitmap = iconBitmap ?: return null
-        val canvas = iconCanvas ?: return null
+    private fun createSpeedIcon(speedText: String): IconCompat? {
+        if (speedText.isBlank()) return null
 
-        bitmap.eraseColor(Color.TRANSPARENT)
+        return try {
+            val bitmap = createBitmap(64, 64)
+            val canvas = Canvas(bitmap)
 
-        if (speedText.isNotBlank()) {
             val parts = speedText.split(" ")
             val valueStr = parts[0]
             val unitStr = if (parts.size > 1) parts[1] else ""
@@ -1061,9 +1049,12 @@ class NetworkMonitoringService : Service() {
                 textPaint.textSize = 20f
                 canvas.drawText(unitStr, xPos, 52f, textPaint)
             }
-        }
 
-        return Icon.createWithBitmap(bitmap)
+            IconCompat.createWithBitmap(bitmap)
+        } catch (e: Exception) {
+            Log.e("NetworkMonitoringService", "Failed to create speed icon", e)
+            null
+        }
     }
 
     private fun createNotification(customLayout: RemoteViews, iconText: String): Notification {
@@ -1095,9 +1086,9 @@ class NetworkMonitoringService : Service() {
             .setPriority(if (highPriority) NotificationCompat.PRIORITY_MAX else NotificationCompat.PRIORITY_LOW)
             .setSilent(true)
 
-        val icon = createSpeedIcon(iconText)
-        if (icon != null) {
-            builder.setSmallIcon(IconCompat.createFromIcon(this, icon))
+        val speedIcon = createSpeedIcon(iconText)
+        if (speedIcon != null) {
+            builder.setSmallIcon(speedIcon)
         } else {
             builder.setSmallIcon(R.drawable.ic_launcher_foreground)
         }
@@ -1452,6 +1443,8 @@ class NetworkMonitoringService : Service() {
                         }
                         return@async
                     }
+                    continue
+                }
 
                     val calendar = Calendar.getInstance()
                     calendar.timeInMillis = currentTime

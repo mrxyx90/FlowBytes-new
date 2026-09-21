@@ -758,15 +758,9 @@ fun AppLimitItem(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp)
-                            .clip(CircleShape)
-                            .background(wifiColor.copy(alpha = 0.15f))
-                    ) {
+                    if (limit.wifiDataLimit > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
@@ -809,13 +803,15 @@ fun AppLimitItem(
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            Text(
-                                text = " / ${formatUsage(limit.wifiDataLimit)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(bottom = 1.dp)
-                            )
+                            if (limit.wifiDataLimit > 0) {
+                                Text(
+                                    text = " / ${formatUsage(limit.wifiDataLimit)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(bottom = 1.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -839,15 +835,9 @@ fun AppLimitItem(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp)
-                            .clip(CircleShape)
-                            .background(mobileColor.copy(alpha = 0.15f))
-                    ) {
+                    if (limit.mobileDataLimit > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
@@ -890,13 +880,15 @@ fun AppLimitItem(
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            Text(
-                                text = " / ${formatUsage(limit.mobileDataLimit)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(bottom = 1.dp)
-                            )
+                            if (limit.mobileDataLimit > 0) {
+                                Text(
+                                    text = " / ${formatUsage(limit.mobileDataLimit)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(bottom = 1.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -996,7 +988,8 @@ fun AppLimitItem(
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(
                             onClick = onEdit,

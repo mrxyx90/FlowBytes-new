@@ -20,6 +20,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -48,9 +51,9 @@ import androidx.compose.material.icons.rounded.Notifications
 fun HomeScreen(
     viewModel: HomeViewModel,
     modifier: Modifier = Modifier,
-    onNavigateToUsage: (Calendar) -> Unit = {},
-    onNavigateToTodayUsage: () -> Unit = {},
-    onNavigateToMonthUsage: () -> Unit = {},
+    onNavigateToUsage: (Calendar, Offset?) -> Unit = { _, _ -> },
+    onNavigateToTodayUsage: (Offset?) -> Unit = {},
+    onNavigateToMonthUsage: (Offset?) -> Unit = {},
 ) {
     val selectedChartType by viewModel.selectedChartType
 
@@ -207,6 +210,7 @@ fun HomeScreen(
         }
 
         item {
+            var todayCardCenter by remember { mutableStateOf(Offset.Zero) }
             UsageSummaryCard(
                 title = stringResource(R.string.label_todays_usage),
                 totalUsage = viewModel.dailyUsage,
@@ -218,7 +222,10 @@ fun HomeScreen(
                 ),
                 icon = AppIcons.TodayUsage,
                 accentColor = MaterialTheme.colorScheme.primary,
-                onClick = onNavigateToTodayUsage,
+                modifier = Modifier.onGloballyPositioned { coordinates ->
+                    todayCardCenter = coordinates.boundsInRoot().center
+                },
+                onClick = { onNavigateToTodayUsage(todayCardCenter) },
                 staggerIndex = 0
             )
         }
@@ -299,6 +306,7 @@ fun HomeScreen(
         }
 
         item {
+            var monthCardCenter by remember { mutableStateOf(Offset.Zero) }
             UsageSummaryCard(
                 title = stringResource(R.string.label_this_month),
                 totalUsage = viewModel.monthlyUsage,
@@ -308,7 +316,10 @@ fun HomeScreen(
                 ),
                 icon = AppIcons.ThisMonthUsage,
                 accentColor = MaterialTheme.colorScheme.primary,
-                onClick = onNavigateToMonthUsage,
+                modifier = Modifier.onGloballyPositioned { coordinates ->
+                    monthCardCenter = coordinates.boundsInRoot().center
+                },
+                onClick = { onNavigateToMonthUsage(monthCardCenter) },
                 staggerIndex = 2
             )
         }

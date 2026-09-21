@@ -27,11 +27,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
 import androidx.core.graphics.drawable.toBitmap
 import com.ray.flowmeter.R
 import com.ray.flowmeter.ui.theme.StaggeredEntrance
 import com.ray.flowmeter.ui.viewmodels.AppLimitsViewModel
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import com.ray.flowmeter.data.AppLimit
 import com.ray.flowmeter.utils.UnitUtils
 
@@ -716,36 +721,53 @@ fun BatchConfigurationContent(
                     Spacer(modifier = Modifier.height(6.dp))
                     LimitInputRow(
                         value = defaultLimitInput,
-                        onValueChange = { valVal ->
-                            defaultLimitInput = valVal
-                            selectedApps.forEach { appLimitsInput[it.packageName] = valVal }
+                        onValueChange = {
+                            defaultLimitInput = it
+                            selectedApps.forEach { app -> appLimitsInput[app.packageName] = it }
                         },
                         unit = defaultLimitUnit,
-                        onUnitChange = { unitVal ->
-                            defaultLimitUnit = unitVal
-                            selectedApps.forEach { appLimitsUnit[it.packageName] = unitVal }
+                        onUnitChange = {
+                            defaultLimitUnit = it
+                            selectedApps.forEach { app -> appLimitsUnit[app.packageName] = it }
                         }
                     )
                 }
             }
         }
 
-        // Individual app override list heading
-        Text(
-            text = stringResource(R.string.title_individual_app_limits),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            text = stringResource(R.string.desc_individual_app_limits_subtitle),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        // Section Title for individual app overrides
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.title_individual_app_limits),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Text(
+                    text = "${selectedApps.size}",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
+        }
 
+        // List of Per-App Override Cards
+        val context = LocalContext.current
         selectedApps.forEach { app ->
-            val context = LocalContext.current
+            val currentAppNetworkType = appNetworkTypes[app.packageName] ?: "both"
+            val currentAppLimitType = appLimitTypes[app.packageName] ?: "daily"
             val appIcon = remember(app.packageName) {
                 try {
                     context.packageManager.getApplicationIcon(app.packageName).toBitmap(120, 120).asImageBitmap()
@@ -757,34 +779,47 @@ fun BatchConfigurationContent(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 6.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                    .padding(bottom = 12.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                          Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
                             modifier = Modifier.size(36.dp)
                         ) {
-                            Box(Modifier.padding(6.dp)) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 if (appIcon != null) {
                                     Image(
                                         bitmap = appIcon,
                                         contentDescription = null,
-                                        modifier = Modifier.fillMaxSize()
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape)
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Apps,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
                                     )
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = app.name,
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -1004,12 +1039,24 @@ fun ConfigurationContent(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.size(56.dp)
                 ) {
-                    Box(Modifier.padding(10.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         if (appIcon != null) {
                             Image(
                                 bitmap = appIcon,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.Apps,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
                             )
                         }
                     }

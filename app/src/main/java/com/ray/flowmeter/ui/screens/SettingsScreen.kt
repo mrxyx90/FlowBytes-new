@@ -62,6 +62,8 @@ import androidx.compose.ui.unit.dp
 import com.ray.flowmeter.R
 import com.ray.flowmeter.ui.components.SettingsGroup
 import com.ray.flowmeter.ui.components.SettingsItem
+import com.ray.flowmeter.ui.dialogs.*
+import com.ray.flowmeter.ui.theme.LocalThemeTransition
 import com.ray.flowmeter.ui.dialogs.AccentColorDialog
 import com.ray.flowmeter.ui.dialogs.IconScaleDialog
 import com.ray.flowmeter.ui.dialogs.LanguageDialog
@@ -74,6 +76,7 @@ import com.ray.flowmeter.ui.dialogs.ThemeDialog
 import com.ray.flowmeter.ui.dialogs.TrafficSettingsDialog
 import com.ray.flowmeter.ui.dialogs.VpnDisclosureDialog
 import com.ray.flowmeter.ui.theme.ThemeMode
+import com.ray.flowmeter.ui.theme.ThemeTransitionKind
 import com.ray.flowmeter.ui.viewmodels.SettingsViewModel
 import com.ray.flowmeter.utils.PermissionHelper
 import java.time.LocalTime
@@ -197,6 +200,8 @@ fun SettingsScreen(
     var showTermsDialog by remember { mutableStateOf(value = false) }
     var showResetTimeDialog by remember { mutableStateOf(false) }
     var showResetDayDialog by remember { mutableStateOf(false) }
+    var showHelpFeedbackDialog by remember { mutableStateOf(false) }
+    var showMoreAppsDialog by remember { mutableStateOf(false) }
 
     var showTrafficSettingsDialog by remember { mutableStateOf(false) }
     var showVpnDisclosure by remember { mutableStateOf(false) }
@@ -285,7 +290,11 @@ fun SettingsScreen(
                 trailingContent = {
                     Switch(
                         checked = useMaterialYou,
-                        onCheckedChange = { viewModel.setUseMaterialYou(it) },
+                        onCheckedChange = { checked ->
+                            themeTransition.startTransition {
+                                viewModel.setUseMaterialYou(checked)
+                            }
+                        },
                         colors = switchColors,
                         thumbContent = { thumbContent(useMaterialYou) }
                     )
@@ -476,6 +485,71 @@ fun SettingsScreen(
             )
         }
 
+        SettingsGroup(title = stringResource(R.string.settings_section_support), staggerIndex = 4) {
+            SettingsItem(
+                icon = Icons.Rounded.Star,
+                title = stringResource(R.string.settings_rate_app),
+                subtitle = stringResource(R.string.settings_rate_app_desc),
+                onClick = {
+                    viewModel.markAsReviewed()
+                    val intent = Intent(Intent.ACTION_VIEW, "market://details?id=${context.packageName}".toUri())
+                    val activity = context.findActivity()
+                    val targetContext = activity ?: context
+                    if (targetContext !is Activity) {
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    try {
+                        targetContext.startActivity(intent)
+                    } catch (_: Exception) {
+                        val webIntent = Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/details?id=${context.packageName}".toUri())
+                        if (targetContext !is Activity) {
+                            webIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        try {
+                            targetContext.startActivity(webIntent)
+                        } catch (_: Exception) {}
+                    }
+                }
+            )
+            SettingsItem(
+                icon = Icons.Rounded.Share,
+                title = stringResource(R.string.settings_share_app),
+                subtitle = stringResource(R.string.settings_share_app_desc),
+                onClick = {
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, shareTextTemplate)
+                    }
+                    val chooserIntent = Intent.createChooser(shareIntent, shareChooserTitle)
+                    val activity = context.findActivity()
+                    val targetContext = activity ?: context
+                    if (targetContext !is Activity) {
+                        chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    try {
+                        targetContext.startActivity(chooserIntent)
+                    } catch (_: Exception) {}
+                }
+            )
+            SettingsItem(
+                icon = Icons.Rounded.SupportAgent,
+                title = stringResource(R.string.settings_help_feedback),
+                subtitle = stringResource(R.string.settings_help_feedback_desc),
+                onClick = { showHelpFeedbackDialog = true }
+            )
+            SettingsItem(
+                icon = Icons.Rounded.GridView,
+                title = stringResource(R.string.settings_more_apps),
+                subtitle = stringResource(R.string.settings_more_apps_desc),
+                onClick = { showMoreAppsDialog = true }
+            )
+            SettingsItem(
+                icon = Icons.Rounded.Favorite,
+                title = stringResource(R.string.settings_donate),
+                subtitle = stringResource(R.string.settings_donate_desc),
+                onClick = onDonateClick
+            )
+        }
 
         SettingsGroup(title = stringResource(R.string.settings_section_about), staggerIndex = 4) {
             SettingsItem(
@@ -635,6 +709,94 @@ fun SettingsScreen(
         }
     }
 
+    if (showHelpFeedbackDialog) {
+        HelpFeedbackDialog(
+            onDismiss = { showHelpFeedbackDialog = false },
+            onTelegramClick = {
+                val username = "rayylabs"
+                val telegramAppIntent = Intent(Intent.ACTION_VIEW, "tg://resolve?domain=$username".toUri()).apply {
+                    setPackage("org.telegram.messenger")
+                }
+                val activity = context.findActivity()
+                val targetContext = activity ?: context
+                if (targetContext !is Activity) {
+                    telegramAppIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                try {
+                    targetContext.startActivity(telegramAppIntent)
+                } catch (_: Exception) {
+                    // Fallback to browser if Telegram app is not installed
+                    val browserIntent = Intent(Intent.ACTION_VIEW, "https://t.me/$username".toUri())
+                    if (targetContext !is Activity) {
+                        browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    try {
+                        targetContext.startActivity(browserIntent)
+                    } catch (_: Exception) {}
+                }
+            },
+            onEmailClick = {
+                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                    data = "mailto:support.rayylabs@gmail.com".toUri()
+                    putExtra(Intent.EXTRA_SUBJECT, "Feedback: FlowBytes (v$versionName)")
+                }
+                val activity = context.findActivity()
+                val targetContext = activity ?: context
+                if (targetContext !is Activity) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                try {
+                    targetContext.startActivity(intent)
+                } catch (_: Exception) {}
+            },
+            onReportBugClick = {
+                val intent = Intent(Intent.ACTION_VIEW, "https://github.com/drrayy001/FlowBytes/issues".toUri())
+                val activity = context.findActivity()
+                val targetContext = activity ?: context
+                if (targetContext !is Activity) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                try {
+                    targetContext.startActivity(intent)
+                } catch (_: Exception) {}
+            }
+        )
+    }
+
+    if (showMoreAppsDialog) {
+        MoreAppsDialog(
+            onDismiss = { showMoreAppsDialog = false },
+            onAppClick = { app ->
+                if (app.isSoon) {
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.msg_app_in_development),
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    val uri = "market://details?id=${app.packageName}".toUri()
+                    val intent = Intent(Intent.ACTION_VIEW, uri)
+                    val activity = context.findActivity()
+                    val targetContext = activity ?: context
+                    if (targetContext !is Activity) {
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    try {
+                        targetContext.startActivity(intent)
+                    } catch (_: Exception) {
+                        val webUrl = app.playStoreUrl ?: "https://play.google.com/store/apps/details?id=${app.packageName}"
+                        val webIntent = Intent(Intent.ACTION_VIEW, webUrl.toUri())
+                        if (targetContext !is Activity) {
+                            webIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        try {
+                            targetContext.startActivity(webIntent)
+                        } catch (_: Exception) {}
+                    }
+                }
+            }
+        )
+    }
 
     if (showAccentColorDialog) {
         AccentColorDialog(

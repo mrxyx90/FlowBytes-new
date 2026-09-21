@@ -287,6 +287,8 @@ class UserPreferencesRepository(private val context: Context) {
         val LAST_UPDATE_CHECK_TIME = longPreferencesKey("last_update_check_time")
         val IGNORED_UPDATE_VERSION = stringPreferencesKey("ignored_update_version")
         val SPEED_UNIT = stringPreferencesKey("speed_unit")
+        val THEME_TRANSITION_KIND = stringPreferencesKey("theme_transition_kind")
+        val SCREEN_TRANSITION_KIND = stringPreferencesKey("screen_transition_kind")
         val SHOW_USAGE_FILTERS = booleanPreferencesKey("show_usage_filters")
         val IS_FOUR_G_BLOCKED = booleanPreferencesKey("is_4g_blocked")
         val IS_CELLULAR_BLOCKED = booleanPreferencesKey("is_cellular_blocked")
@@ -334,6 +336,16 @@ class UserPreferencesRepository(private val context: Context) {
     val accentColor: Flow<Long?> = preferencesFlow
         .map { preferences ->
             preferences[PreferencesKeys.ACCENT_COLOR]
+        }.distinctUntilChanged()
+
+    val themeTransitionKind: Flow<String> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.THEME_TRANSITION_KIND] ?: "WIPE_RIGHT"
+        }.distinctUntilChanged()
+
+    val screenTransitionKind: Flow<String> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.SCREEN_TRANSITION_KIND] ?: "FADE"
         }.distinctUntilChanged()
 
     val showNotification: Flow<Boolean> = preferencesFlow
@@ -671,6 +683,18 @@ class UserPreferencesRepository(private val context: Context) {
             } else {
                 preferences[PreferencesKeys.ACCENT_COLOR] = color
             }
+        }
+    }
+
+    suspend fun setThemeTransitionKind(kind: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.THEME_TRANSITION_KIND] = kind
+        }
+    }
+
+    suspend fun setScreenTransitionKind(kind: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SCREEN_TRANSITION_KIND] = kind
         }
     }
 
