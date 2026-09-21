@@ -307,10 +307,14 @@
     <string name="label_custom_wifi">واي فاي مخصص</string>
     <string name="label_custom_mobile">بيانات الهاتف مخصص</string>
     <string name="settings_traffic_threshold_subtitle">تكوين حدود السرعة والمدة للتنبيهات</string>
-    <string name="whats_new_custom_limits_title">حدود النطاق الزمني المخصصة</string>
-    <string name="whats_new_custom_limits_desc">يمكنك الآن تعيين حدود البيانات لنطاقات تاريخ محددة عبر كل من شبكات الهاتف المحمول والواي فاي.</string>
-    <string name="whats_new_reset_day_title">يوم إعادة التعيين الشهري</string>
-    <string name="whats_new_reset_day_desc">دعم دورات الفوترة المخصصة. اختر يوماً معيناً من الشهر لإعادة تعيين استخدامك.</string>
+    <string name="whats_new_multi_network_title">قيود الشبكات المتعددة</string>
+    <string name="whats_new_multi_network_desc">تعيين قيود البيانات لأنواع شبكات متعددة (Wi-Fi، جوال، 4G) في وقت واحد لأي تطبيق.</string>
+    <string name="whats_new_performance_title">مراقبة ذكية</string>
+    <string name="whats_new_performance_desc">يضمن منطق المراقبة ثنائي التردد تتبعًا دقيقًا مع تقليل استهلاك البطارية بشكل كبير.</string>
+    <string name="whats_new_firewall_title">جدار حماية متكامل</string>
+    <string name="whats_new_firewall_desc">حظر الوصول إلى الإنترنت فورًا عن طريق تعيين حد 0 ميجابايت. يتعامل محرك VPN المحسن مع القواعد دون تأخير.</string>
+    <string name="whats_new_modern_ui_title">محسن لنظام Android 14</string>
+    <string name="whats_new_modern_ui_desc">تنظيف كامل لـ API 34. تحسين استقرار المظهر، دعم AMOLED، وتصفح إعدادات مبسط.</string>
     <string name="feedback_email_subject">آراء FlowBytes - %1$d نجوم</string>
 
     <string name="btn_done">تم</string>
@@ -415,10 +419,9 @@
     <string name="settings_check_updates_desc">تأكد من أن تطبيقك يعمل بأحدث إصدار</string>
     <string name="toast_app_up_to_date">FlowBytes محدث بالفعل!</string>
     <string name="toast_update_check_failed">فشل التحقق من وجود تحديثات. يرجى المحاولة لاحقًا.</string>
-    <string name="toast_checking_updates">جاري التحقق من وجود تحديثات...</string>
+    <string name="toast_checking_updates">جاري التحقق من وجود تحديثات&#8230;</string>
     <string name="snackbar_support_prompt">هل تستمتع بـ FlowBytes؟ ادعم تطويرنا الخالي من الإعلانات!</string>
     <string name="snackbar_support_action">دعم</string>
-    <string name="btn_skip_for_now">تخطي الآن</string>
     <string name="title_custom_limit_widget">أداة حد الشبكة المخصصة</string>
     <string name="label_custom_limit_caps">حد الشبكة المخصص</string>
     <string name="msg_usage_stats_permission_disabled">إذن إحصاءات الاستخدام معطل. اضغط للمنح.</string>

@@ -341,10 +341,14 @@
     <string name="label_custom_wifi">Benutzerdefiniertes WLAN</string>
     <string name="label_custom_mobile">Benutzerdefiniertes Mobil</string>
     <string name="settings_traffic_threshold_subtitle">Geschwindigkeits- und Zeitlimits für Warnungen konfigurieren</string>
-    <string name="whats_new_custom_limits_title">Limits für benutzerdefinierte Zeiträume</string>
-    <string name="whats_new_custom_limits_desc">Sie können jetzt Datenlimits für bestimmte Zeiträume sowohl für Mobilfunk- als auch für WLAN-Netzwerke festlegen.</string>
-    <string name="whats_new_reset_day_title">Monatlicher Zurücksetzungstag</string>
-    <string name="whats_new_reset_day_desc">Unterstützung für benutzerdefinierte Abrechnungszyklen. Wählen Sie einen bestimmten Tag des Monats aus, an dem Ihre Nutzung zurückgesetzt wird.</string>
+    <string name="whats_new_multi_network_title">Multi-Netzwerk-Limits</string>
+    <string name="whats_new_multi_network_desc">Legen Sie Datenlimits für mehrere Netzwerktypen (WLAN, Mobilfunk, 4G) gleichzeitig für jede App fest.</string>
+    <string name="whats_new_performance_title">Intelligente Überwachung</string>
+    <string name="whats_new_performance_desc">Die Dual-Frequenz-Überwachungslogik sorgt für präzises Tracking bei deutlich reduziertem Batterieverbrauch.</string>
+    <string name="whats_new_firewall_title">Integrierte Firewall</string>
+    <string name="whats_new_firewall_desc">Sperren Sie den Internetzugang sofort, indem Sie ein Limit von 0 MB festlegen. Die verbesserte VPN-Engine verarbeitet Regeln ohne Verzögerung.</string>
+    <string name="whats_new_modern_ui_title">Optimiert für Android 14</string>
+    <string name="whats_new_modern_ui_desc">Komplette Bereinigung für API 34. Verbesserte Theme-Stabilität, AMOLED-Unterstützung und optimierte Navigation in den Einstellungen.</string>
     <string name="feedback_email_subject">FlowBytes Feedback - %1$d Sterne</string>
 
     <string name="legal_privacy_policy" formatted="false">Datenschutzerklärung\nInkrafttreten: 29. April 2026\n\nIch, der Entwickler von FlowBytes (die \"App\"), stelle diese Anwendung kostenlos zur Verfügung. Die App wird im Ist-Zustand angeboten und ist für die Nutzung ohne Gewährleistung oder Garantien bestimmt.\n\n1. Erfassung und Verwendung von Informationen\nFlowBytes überwacht die Netzwerkgeschwindigkeiten und die Datennutzung Ihres Geräts (WLAN und Mobilfunk), um Ihnen zu helfen, die Kontrolle über Ihr Internet zu behalten. Alle Überwachungen, Berechnungen der Datennutzung und Blockierungsaktionen werden lokal auf Ihrem Gerät durchgeführt. Wir erfassen, speichern oder übertragen keine personenbezogenen Daten, einschließlich:\n- Browserverlauf\n- Inhalt des Netzwerkverkehrs\n- IP-Adresse\n- Alle persönlich identifizierbaren Informationen\n\n2. Erforderliche Berechtigungen\nUm ordnungsgemäß zu funktionieren, benötigt die App die folgenden Berechtigungen:\n- Nutzungszugriff (Netzwerkstatistiken): Wird verwendet, um auf Netzwerknutzungsstatistiken zuzugreifen, um Download-/Upload-Geschwindigkeiten zu berechnen und die Datennutzung pro App zu verfolgen.\n- Vordergrunddienst: Ermöglicht es der App, einen Hintergrunddienst auszuführen, um die Netzwerkgeschwindigkeit in Echtzeit in der Benachrichtigungsleiste anzuzeigen und eine konsistente Überwachung zu gewährleisten.\n- VPN-Dienst (Lokales VPN): FlowBytes verwendet ein lokales VPN, um den Internetzugang für Apps zu verwalten, die ihr Limit überschreiten. Dieses VPN ist zu 100% lokal; Ihr Datenverkehr verlässt niemals Ihr Gerät und wird niemals von uns abgefangen.\n\nAlle Daten, auf die über diese Berechtigungen zugegriffen wird, verbleiben auf Ihrem Gerät und werden ausschließlich zur Bereitstellung der Überwachungs- und Steuerungsfunktionen innerhalb der App verwendet.\n\n3. Dienste von Drittanbietern\nDie App verwendet keine Dienste von Drittanbietern, Analysetools oder Werbenetzwerke, die Informationen erfassen, mit denen Sie identifiziert werden können.\n\n4. Sicherheit\nDa die gesamte Datenverarbeitung lokal auf Ihrem Gerät erfolgt, ist das Risiko von Datenschutzverletzungen unsererseits minimal. Keine Methode der elektronischen Speicherung oder Übertragung über das Internet ist jedoch absolut sicher, und wir können keine absolute Sicherheit garantieren.\n\n5. Privatsphäre von Kindern\nDieser Dienst ist nicht für Personen unter 13 Jahren bestimmt. Wir erfassen wissentlich keine personenbezogenen Daten von Kindern unter 13 Jahren.\n\n6. Änderungen an dieser Datenschutzerklärung\nWir können diese Datenschutzerklärung von Zeit zu Zeit aktualisieren. Alle Änderungen werden auf dieser Seite veröffentlicht. Es wird empfohlen, diese Seite regelmäßig auf Aktualisierungen zu überprüfen.\n\n7. Kontaktieren Sie uns\nWenn Sie Fragen oder Anregungen zu dieser Datenschutzerklärung haben, können Sie uns kontaktieren unter:\nE-Mail: support.rayylabs@gmail.com</string>
@@ -413,10 +417,9 @@
     <string name="settings_check_updates_desc">Sicherstellen, dass die neueste Version läuft</string>
     <string name="toast_app_up_to_date">FlowBytes ist auf dem neuesten Stand!</string>
     <string name="toast_update_check_failed">Fehler beim Suchen nach Updates. Bitte versuchen Sie es später noch einmal.</string>
-    <string name="toast_checking_updates">Suche nach Updates...</string>
+    <string name="toast_checking_updates">Suche nach Updates&#8230;</string>
     <string name="snackbar_support_prompt">Gefällt Ihnen FlowBytes? Unterstützen Sie unsere werbefreie Entwicklung!</string>
     <string name="snackbar_support_action">Unterstützen</string>
-    <string name="btn_skip_for_now">Vorerst überspringen</string>
     <string name="title_custom_limit_widget">Widget für benutzerdefiniertes Netzwerklimit</string>
     <string name="label_custom_limit_caps">BENUTZERDEFINIERTES NETZWERKLIMIT</string>
     <string name="msg_usage_stats_permission_disabled">Berechtigung für Nutzungsstatistiken deaktiviert. Zum Erteilen tippen.</string>

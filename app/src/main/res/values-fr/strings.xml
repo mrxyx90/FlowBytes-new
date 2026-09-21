@@ -307,10 +307,14 @@
     <string name="label_custom_wifi">Wi-Fi personnalisé</string>
     <string name="label_custom_mobile">Données mobiles personnalisées</string>
     <string name="settings_traffic_threshold_subtitle">Configurer les limites de vitesse et de durée pour les alertes</string>
-    <string name="whats_new_custom_limits_title">Limites de plage de dates personnalisées</string>
-    <string name="whats_new_custom_limits_desc">Vous pouvez désormais définir des limites de données pour des plages de dates spécifiques sur les réseaux mobiles et Wi-Fi.</string>
-    <string name="whats_new_reset_day_title">Jour de réinitialisation mensuel</string>
-    <string name="whats_new_reset_day_desc">Prise en charge des cycles de facturation personnalisés. Choisissez un jour spécifique du mois pour réinitialiser votre utilisation.</string>
+    <string name="whats_new_multi_network_title">Limites multi-réseaux</string>
+    <string name="whats_new_multi_network_desc">Définissez simultanément des limites de données pour plusieurs types de réseaux (Wi-Fi, mobile, 4G) pour n\'importe quelle application.</string>
+    <string name="whats_new_performance_title">Surveillance intelligente</string>
+    <string name="whats_new_performance_desc">La logique de surveillance à double fréquence assure un suivi précis tout en réduisant considérablement la consommation de batterie.</string>
+    <string name="whats_new_firewall_title">Pare-feu intégré</string>
+    <string name="whats_new_firewall_desc">Bloquez instantanément l\'accès à Internet en fixant une limite de 0 Mo. Le moteur VPN amélioré gère les règles avec une latence nulle.</string>
+    <string name="whats_new_modern_ui_title">Optimisé pour Android 14</string>
+    <string name="whats_new_modern_ui_desc">Nettoyage complet pour l\'API 34. Amélioration de la stabilité des thèmes, prise en charge AMOLED et navigation simplifiée dans les paramètres.</string>
     <string name="feedback_email_subject">Commentaires FlowBytes - %1$d étoiles</string>
 
     <string name="btn_done">Terminé</string>
@@ -415,10 +419,9 @@
     <string name="settings_check_updates_desc">S\'assurer d\'utiliser la dernière version</string>
     <string name="toast_app_up_to_date">FlowBytes est à jour !</string>
     <string name="toast_update_check_failed">Échec de la vérification des mises à jour. Veuillez réessayer plus tard.</string>
-    <string name="toast_checking_updates">Recherche de mises à jour...</string>
+    <string name="toast_checking_updates">Recherche de mises à jour&#8230;</string>
     <string name="snackbar_support_prompt">Vous aimez FlowBytes ? Soutenez notre développement sans publicité !</string>
     <string name="snackbar_support_action">Soutenir</string>
-    <string name="btn_skip_for_now">Ignorer pour l\'instant</string>
     <string name="title_custom_limit_widget">Widget de limite réseau personnalisée</string>
     <string name="label_custom_limit_caps">LIMITE RÉSEAU PERSONNALISÉE</string>
     <string name="msg_usage_stats_permission_disabled">Autorisation d\'accès aux données d\'usage désactivée. Appuyez pour accorder.</string>

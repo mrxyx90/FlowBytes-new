@@ -83,11 +83,13 @@ fun AppUsageScreen(
 
     val mobileWifiFilterLabel = stringResource(R.string.filter_mobile_wifi)
     val mobileOnlyFilterLabel = stringResource(R.string.filter_mobile_only)
+    val fourGOnlyFilterLabel = stringResource(R.string.filter_four_g_only)
     val wifiOnlyFilterLabel = stringResource(R.string.filter_wifi_only)
 
     val savedNetworkFilter by viewModel.networkFilter.collectAsState()
     val networkFilter = when (savedNetworkFilter) {
         "mobile" -> mobileOnlyFilterLabel
+        "four_g" -> fourGOnlyFilterLabel
         "wifi" -> wifiOnlyFilterLabel
         else -> mobileWifiFilterLabel
     }
@@ -95,6 +97,7 @@ fun AppUsageScreen(
     val networkOptions = listOf(
         mobileWifiFilterLabel,
         mobileOnlyFilterLabel,
+        fourGOnlyFilterLabel,
         wifiOnlyFilterLabel
     )
 
@@ -541,6 +544,7 @@ fun AppUsageScreen(
                     ) { filter ->
                         val storeValue = when (filter) {
                             mobileOnlyFilterLabel -> "mobile"
+                            fourGOnlyFilterLabel -> "four_g"
                             wifiOnlyFilterLabel -> "wifi"
                             else -> "all"
                         }
@@ -736,11 +740,13 @@ fun AppUsageScreen(
                         item {
                             val displayGlobalDown = when (targetStateTriple.third) {
                                 "mobile" -> viewModel.globalCellDown
+                                "four_g" -> viewModel.globalFourGDown
                                 "wifi" -> viewModel.globalWifiDown
                                 else -> viewModel.globalCellDown + viewModel.globalWifiDown
                             }
                             val displayGlobalUp = when (targetStateTriple.third) {
                                 "mobile" -> viewModel.globalCellUp
+                                "four_g" -> viewModel.globalFourGUp
                                 "wifi" -> viewModel.globalWifiUp
                                 else -> viewModel.globalCellUp + viewModel.globalWifiUp
                             }
@@ -760,6 +766,7 @@ fun AppUsageScreen(
                             filteredAppList.maxOf {
                                 when (targetStateTriple.third) {
                                     "mobile" -> it.cellUsage
+                                    "four_g" -> it.fourGUsage
                                     "wifi" -> it.wifiUsage
                                     else -> it.totalUsage
                                 }
@@ -790,6 +797,7 @@ fun AppUsageScreen(
                             ) { index, appUsage ->
                                 val displayUsage = when (targetStateTriple.third) {
                                     "mobile" -> appUsage.cellUsage
+                                    "four_g" -> appUsage.fourGUsage
                                     "wifi" -> appUsage.wifiUsage
                                     else -> appUsage.totalUsage
                                 }
@@ -1158,6 +1166,7 @@ fun AppUsageItem(
                     val downloadColor = MaterialTheme.colorScheme.primary
                     val uploadColor = MaterialTheme.colorScheme.tertiary
                     val wifiColor = MaterialTheme.colorScheme.secondary
+                    val fourGColor = MaterialTheme.colorScheme.primary // Use primary for 4G too, or another if available
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1181,6 +1190,15 @@ fun AppUsageItem(
                                     icon = AppIcons.Wifi,
                                     color = wifiColor
                                 )
+                                if (appUsage.fourGUsage > 0) {
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                    ModernUsageSubItem(
+                                        label = stringResource(R.string.label_four_g),
+                                        value = formatUsage(appUsage.fourGUsage),
+                                        icon = AppIcons.Mobile,
+                                        color = fourGColor
+                                    )
+                                }
                             }
                         }
 

@@ -236,7 +236,6 @@
     <string name="title_custom_color">Налаштувати колір</string>
     <string name="btn_apply">Застосувати</string>
     <string name="btn_get_started">Розпочати</string>
-    <string name="btn_skip_for_now">Пропустити зараз</string>
     <string name="title_welcome">Ласкаво просимо до FlowBytes</string>
     <string name="msg_onboarding_desc">Для точного відстеження трафіку програмі потрібні деякі дозволи.</string>
     <string name="label_usage_access">Доступ до використання</string>
@@ -354,10 +353,14 @@
     <string name="label_custom_wifi">Власний Wi-Fi</string>
     <string name="label_custom_mobile">Власний мобільний</string>
     <string name="settings_traffic_threshold_subtitle">Налаштувати межі швидкості та тривалості для сповіщень</string>
-    <string name="whats_new_custom_limits_title">Ліміти на власний діапазон дат</string>
-    <string name="whats_new_custom_limits_desc">Тепер ви можете встановлювати ліміти трафіку на конкретні діапазони дат для мобільних та Wi-Fi мереж.</string>
-    <string name="whats_new_reset_day_title">День місячного скидання</string>
-    <string name="whats_new_reset_day_desc">Підтримка власних розрахункових циклів. Оберіть конкретний день місяця для скидання лічильника.</string>
+    <string name="whats_new_multi_network_title">Multi-Network Limits</string>
+    <string name="whats_new_multi_network_desc">Set data limits for multiple network types (Wi-Fi, Mobile, 4G) simultaneously for any app.</string>
+    <string name="whats_new_performance_title">Smart Monitoring</string>
+    <string name="whats_new_performance_desc">Dual-frequency monitoring logic ensures accurate tracking while significantly reducing battery consumption.</string>
+    <string name="whats_new_firewall_title">Integrated Firewall</string>
+    <string name="whats_new_firewall_desc">Block internet access instantly by setting a 0MB limit. Enhanced VPN engine handles rules with zero latency.</string>
+    <string name="whats_new_modern_ui_title">Android 14 Optimized</string>
+    <string name="whats_new_modern_ui_desc">Full cleanup for API 34. Improved theme stability, AMOLED support, and streamlined settings navigation.</string>
 
     <string name="label_daily_wifi_limit">Денний ліміт Wi-Fi</string>
     <string name="label_monthly_wifi_limit">Місячний ліміт Wi-Fi</string>
@@ -423,7 +426,7 @@
     <string name="settings_check_updates_desc">Переконайтеся, що ви використовуєте найновішу версію</string>
     <string name="toast_app_up_to_date">FlowBytes оновлено до найновішої версії!</string>
     <string name="toast_update_check_failed">Не вдалося перевірити оновлення. Спробуйте пізніше.</string>
-    <string name="toast_checking_updates">Перевірка оновлень...</string>
+    <string name="toast_checking_updates">Перевірка оновлень&#8230;</string>
 
     <!-- Strings extracted from Kotlin files -->
     <string name="msg_usage_stats_permission_disabled">Дозвіл на доступ до статистики вимкнено. Натисніть, щоб надати.</string>

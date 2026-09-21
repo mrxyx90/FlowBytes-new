@@ -2,8 +2,6 @@
 package com.ray.flowmeter.ui.theme
 
 import android.app.Activity
-import android.os.Build
-import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
@@ -35,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import android.graphics.Color as AndroidColor
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 val PrimaryLight = Color(0xFF0056D2)
 val OnPrimaryLight = Color(0xFFFFFFFF)
@@ -290,7 +288,7 @@ fun FlowMeterTheme(
     }
 
     var colorScheme = when {
-        useMaterialYou && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) -> {
+        useMaterialYou -> {
             if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         isDark -> DarkColorScheme
@@ -426,7 +424,49 @@ fun StaggeredEntrance(
     delayStep: Int = 50,
     content: @Composable () -> Unit,
 ) {
-    content()
+    val currentIndex = index ?: LocalStaggerIndex.current
+    var animateIn by rememberSaveable(currentIndex) { mutableStateOf(false) }
+
+    LaunchedEffect(currentIndex) {
+        if (!animateIn) {
+            // Cap the delay for items deep in a list to ensure they load quickly when scrolling
+            val cappedIndex = minOf(currentIndex, 6)
+            delay((cappedIndex * delayStep).milliseconds)
+            animateIn = true
+        }
+    }
+
+    val alpha by animateFloatAsState(
+        targetValue = if (animateIn) 1f else 0f,
+        animationSpec = tween(durationMillis = 500, easing = LinearOutSlowInEasing),
+        label = "bloomAlpha"
+    )
+
+    val scale by animateFloatAsState(
+        targetValue = if (animateIn) 1f else 0.95f,
+        animationSpec = premiumSpring(),
+        label = "bloomScale"
+    )
+
+    val contentBlock = @Composable {
+        Box(
+            modifier = Modifier.graphicsLayer {
+                this.alpha = alpha
+                this.scaleX = scale
+                this.scaleY = scale
+            }
+        ) {
+            content()
+        }
+    }
+
+    if (index == null) {
+        CompositionLocalProvider(LocalStaggerIndex provides currentIndex + 1) {
+            contentBlock()
+        }
+    } else {
+        contentBlock()
+    }
 }
 
 fun Modifier.shimmer(

@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId = "com.ray.flowmeter"
-        minSdk = 29
+        minSdk = 34
         targetSdk = 37
         versionCode = 42
         versionName = appVersionName
@@ -37,10 +37,13 @@ android {
                 keystoreProperties.load(FileInputStream(keystorePropertiesFile))
             }
 
-            storeFile = file(keystoreProperties.getProperty("RELEASE_STORE_FILE") ?: "")
-            storePassword = keystoreProperties.getProperty("RELEASE_STORE_PASSWORD") ?: ""
-            keyAlias = keystoreProperties.getProperty("RELEASE_KEY_ALIAS") ?: ""
-            keyPassword = keystoreProperties.getProperty("RELEASE_KEY_PASSWORD") ?: ""
+            val storeFilePath = keystoreProperties.getProperty("RELEASE_STORE_FILE")
+            if (storeFilePath != null && storeFilePath.isNotEmpty()) {
+                storeFile = file(storeFilePath)
+                storePassword = keystoreProperties.getProperty("RELEASE_STORE_PASSWORD")
+                keyAlias = keystoreProperties.getProperty("RELEASE_KEY_ALIAS")
+                keyPassword = keystoreProperties.getProperty("RELEASE_KEY_PASSWORD")
+            }
         }
     }
     buildTypes {
@@ -119,9 +122,11 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.core)
     testImplementation(libs.androidx.junit)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.runner)
+    debugImplementation(platform(libs.androidx.compose.bom))
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     "ksp"(libs.androidx.room.compiler)

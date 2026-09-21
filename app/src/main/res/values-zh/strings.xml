@@ -341,10 +341,14 @@
     <string name="label_custom_wifi">自定义 Wi-Fi</string>
     <string name="label_custom_mobile">自定义移动网络</string>
     <string name="settings_traffic_threshold_subtitle">配置警报的速度和时间限制</string>
-    <string name="whats_new_custom_limits_title">自定义日期限制限额</string>
-    <string name="whats_new_custom_limits_desc">您现在可以针对特定的自定义日期范围（跨越移动和 Wi-Fi 网络）设定独立的流量使用限制。</string>
-    <string name="whats_new_reset_day_title">每月计费周期重置日</string>
-    <string name="whats_new_reset_day_desc">支持自定义的每月月结账日。自由选择当月流量统计计费周期的重置日期。</string>
+    <string name="whats_new_multi_network_title">多网络额度限制</string>
+    <string name="whats_new_multi_network_desc">同时为任何应用设置多种网络类型（Wi-Fi、移动网络、4G）的数据限制。</string>
+    <string name="whats_new_performance_title">智能监控</string>
+    <string name="whats_new_performance_desc">双频监控逻辑确保精准追踪，同时显著降低电池消耗。</string>
+    <string name="whats_new_firewall_title">集成防火墙</string>
+    <string name="whats_new_firewall_desc">通过设置 0MB 限制即时阻止联网。增强型 VPN 引擎零延迟处理规则。</string>
+    <string name="whats_new_modern_ui_title">Android 14 优化</string>
+    <string name="whats_new_modern_ui_desc">针对 API 34 的全面清理。提升了主题稳定性、AMOLED 支持以及简化的设置导航。</string>
     <string name="feedback_email_subject">FlowBytes 反馈 - %1$d 星评级</string>
 
     <string name="legal_privacy_policy" formatted="false">隐私政策\n生效日期：2026年4月29日\n\n我，FlowBytes（下称“本应用”）的开发者，免费提供本应用。本应用按“原样”提供，且不提供任何形式的担保或保证。\n\n1. 信息收集与使用\nFlowBytes 会监控您设备的网络速度和流量使用情况（Wi-Fi 和蜂窝网络），以帮助您掌控网络。所有监控、流量计算以及拦截操作均在您的设备本地处理。我们绝对不会收集、存储或传输您的任何个人数据，包括：\n- 网页浏览历史记录\n- 网络流量传输内容\n- IP 地址\n- 任何其他个人身份信息\n\n2. 所需的特殊权限\n为保证功能正常运作，本应用需要您授予以下特殊权限：\n- 应用使用情况访问权限（网络状态统计）：用于访问系统底层的流量使用情况数据（通过 NetworkStatsManager 和 TrafficStats），以此计算下载/上传速度并按应用统计每日/每月的流量消耗数据。\n- 前台服务权限：允许本应用在后台运行系统服务，以便在系统通知栏中实时刷新网络速度指示器并维持连续的流量监控。\n- VPN 服务权限（本地虚拟网络）：FlowBytes 会使用系统 VPN 框架在本地建立流量拦截服务，以便拦截已超出限额的网络流量访问。此 VPN 服务 100% 在您设备本地独立运行；流量绝不会上传至外部，我们也绝不会拦截窃听您的隐私内容。\n\n通过上述权限访问的所有数据都将安全地保留在您的设备本地，并且仅用于提供本应用内置的监控与控制功能。\n\n3. 第三方服务与 SDK\n本应用不接入任何可能收集您的个人身份信息的第三方数据分析服务、广告联盟 SDK 或推送跟踪组件。\n\n4. 数据安全保障\n由于所有的流量计算和拦截都完全在您设备本地独立完成，因此我们这边不存在任何服务器端泄露数据的隐私风险。但考虑到互联网和电子存储环境的局限性，我们无法做出绝对零风险的数据安全承诺。\n\n5. 儿童隐私保护\n本应用不面向 13 岁以下的儿童。我们绝不会有意收集 13 岁以下儿童的任何个人身份信息。\n\n6. 隐私政策的更新\n我们可能会随时更新本隐私政策。任何更新都将在此页面公布。建议您定期查看此页面以了解最新的隐私条款。\n\n7. 联系我们\n如果您对本隐私政策有任何疑问或改进建议，可以通过以下方式与我们取得联系：\n电子邮件：support.rayylabs@gmail.com</string>
@@ -413,10 +417,9 @@
     <string name="settings_check_updates_desc">确保您的应用运行的是最新版本</string>
     <string name="toast_app_up_to_date">FlowBytes 已是最新版本！</string>
     <string name="toast_update_check_failed">检查更新失败。请稍后再试。</string>
-    <string name="toast_checking_updates">正在检查更新...</string>
+    <string name="toast_checking_updates">正在检查更新&#8230;</string>
     <string name="snackbar_support_prompt">喜欢 FlowBytes 吗？支持我们的无广告开发！</string>
     <string name="snackbar_support_action">支持</string>
-    <string name="btn_skip_for_now">暂时跳过</string>
     <string name="title_custom_limit_widget">自定义网络限制小部件</string>
     <string name="label_custom_limit_caps">自定义网络限制</string>
     <string name="msg_usage_stats_permission_disabled">使用情况记录权限已禁用。点击去授权。</string>

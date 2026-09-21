@@ -1,8 +1,6 @@
 package com.ray.flowmeter.utils
 
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
 import android.util.Log
 import com.google.android.play.core.appupdate.AppUpdateInfo
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
@@ -15,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
@@ -30,9 +29,9 @@ sealed class UpdateResult {
 
 @Serializable
 private data class GitHubRelease(
-    val tag_name: String,
-    val html_url: String,
-    val body: String? = null
+    @SerialName("tag_name") val tagName: String,
+    @SerialName("html_url") val htmlUrl: String,
+    val body: String? = null,
 )
 
 class AppUpdateHelper(
@@ -47,7 +46,7 @@ class AppUpdateHelper(
         val installer = getInstallerPackageName(context)
         Log.d("AppUpdateHelper", "Detected installer package: $installer")
 
-        if (installer == "com.android.vending" && !forceGitHubCheck) {
+        if ((installer == "com.android.vending") && !forceGitHubCheck) {
             checkPlayStore(callback)
         } else {
             checkGitHub(callback)
@@ -92,18 +91,17 @@ class AppUpdateHelper(
                     val json = Json { ignoreUnknownKeys = true }
                     val release = json.decodeFromString<GitHubRelease>(jsonStr)
                     
-                    val latestVersion = release.tag_name.trim().removePrefix("v")
-                    val currentVersion = BuildConfig.VERSION_NAME
+                    val latestVersion = release.tagName.trim().removePrefix("v")
+                    
+                    Log.d("AppUpdateHelper", "GitHub version check: latest=$latestVersion")
 
-                    Log.d("AppUpdateHelper", "GitHub version check: current=$currentVersion, latest=$latestVersion")
-
-                    if (isNewerVersion(currentVersion, latestVersion)) {
+                    if (isNewerThanCurrent(latestVersion)) {
                         val ignored = preferencesRepository.ignoredUpdateVersion.first()
-                        if (ignored != release.tag_name) {
+                        if (ignored != release.tagName) {
                             withContext(Dispatchers.Main) {
                                 callback(UpdateResult.GitHubUpdateAvailable(
-                                    tag = release.tag_name,
-                                    downloadUrl = release.html_url,
+                                    tag = release.tagName,
+                                    downloadUrl = release.htmlUrl,
                                     releaseNotes = release.body
                                 ))
                             }
@@ -123,7 +121,8 @@ class AppUpdateHelper(
         }
     }
 
-    private fun isNewerVersion(current: String, latest: String): Boolean {
+    private fun isNewerThanCurrent(latest: String): Boolean {
+        val current = BuildConfig.VERSION_NAME
         val currentParts = current.split(".").mapNotNull { it.toIntOrNull() }
         val latestParts = latest.split(".").mapNotNull { it.toIntOrNull() }
         val length = maxOf(currentParts.size, latestParts.size)
@@ -138,13 +137,8 @@ class AppUpdateHelper(
 
     internal fun getInstallerPackageName(context: Context): String? {
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                context.packageManager.getInstallSourceInfo(context.packageName).installingPackageName
-            } else {
-                @Suppress("DEPRECATION")
-                context.packageManager.getInstallerPackageName(context.packageName)
-            }
-        } catch (e: Exception) {
+            context.packageManager.getInstallSourceInfo(context.packageName).installingPackageName
+        } catch (_: Exception) {
             null
         }
     }

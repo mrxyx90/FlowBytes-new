@@ -2,7 +2,6 @@
 // Lists installed packages with filtering and search capabilities.
 package com.ray.flowmeter.ui.screens
 
-import android.graphics.drawable.Drawable
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -20,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -32,13 +32,13 @@ import androidx.compose.ui.draw.clip
 import androidx.core.graphics.drawable.toBitmap
 import com.ray.flowmeter.R
 import com.ray.flowmeter.ui.theme.StaggeredEntrance
-import com.ray.flowmeter.ui.theme.bounceClick
 import com.ray.flowmeter.ui.viewmodels.AppLimitsViewModel
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import com.ray.flowmeter.data.AppLimit
+import com.ray.flowmeter.utils.UnitUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -179,7 +179,7 @@ fun AppPickerScreen(
                                 contentPadding = PaddingValues(bottom = 100.dp)
                             ) {
                                 itemsIndexed(filtered, key = { _, it -> it.packageName }) { index, app ->
-                                    val appIcon by produceState<Drawable?>(
+                                    val appIcon by produceState<ImageBitmap?>(
                                         initialValue = null,
                                         key1 = app.packageName
                                     ) {
@@ -212,7 +212,7 @@ fun AppPickerScreen(
                                                     Box(modifier = Modifier.padding(8.dp)) {
                                                         if (appIcon != null) {
                                                             Image(
-                                                                bitmap = appIcon!!.toBitmap(width = 96, height = 96).asImageBitmap(),
+                                                                bitmap = appIcon!!,
                                                                 contentDescription = null,
                                                                 modifier = Modifier.fillMaxSize()
                                                             )
@@ -391,7 +391,6 @@ fun BatchConfigurationScreen(
             ) {
                 BatchConfigurationContent(
                     selectedApps = selectedApps,
-                    onCancel = onBack,
                     onConfirm = onConfirm,
                     onRegisterConfirmTrigger = { triggerConfirm = it }
                 )
@@ -462,11 +461,10 @@ fun BatchConfigurationScreen(
 @Composable
 fun BatchConfigurationContent(
     selectedApps: List<AppLimitsViewModel.AppInfo>,
-    onCancel: () -> Unit,
     onConfirm: (List<AppLimit>) -> Unit,
     onRegisterConfirmTrigger: (() -> Unit) -> Unit = {}
 ) {
-    var networkType by remember { mutableStateOf("both") }
+    var networkTypes by remember { mutableStateOf(setOf("four_g")) }
     var limitType by remember { mutableStateOf("daily") }
 
     // Defaults
@@ -474,13 +472,13 @@ fun BatchConfigurationContent(
     var defaultLimitUnit by remember { mutableStateOf("MB") }
     var defaultWifiLimitInput by remember { mutableStateOf("100") }
     var defaultWifiLimitUnit by remember { mutableStateOf("MB") }
-    var defaultMobileLimitInput by remember { mutableStateOf("50") }
+    var defaultMobileLimitInput by remember { mutableStateOf("100") }
     var defaultMobileLimitUnit by remember { mutableStateOf("MB") }
 
     // Map-based states for per-app overrides
     val appNetworkTypes = remember(selectedApps) {
-        mutableStateMapOf<String, String>().apply {
-            selectedApps.forEach { this[it.packageName] = "both" }
+        mutableStateMapOf<String, Set<String>>().apply {
+            selectedApps.forEach { this[it.packageName] = setOf("four_g") }
         }
     }
     val appLimitTypes = remember(selectedApps) {
@@ -510,7 +508,7 @@ fun BatchConfigurationContent(
     }
     val appMobileLimitsInput = remember(selectedApps) {
         mutableStateMapOf<String, String>().apply {
-            selectedApps.forEach { this[it.packageName] = "50" }
+            selectedApps.forEach { this[it.packageName] = "100" }
         }
     }
     val appMobileLimitsUnit = remember(selectedApps) {
@@ -518,41 +516,45 @@ fun BatchConfigurationContent(
             selectedApps.forEach { this[it.packageName] = "MB" }
         }
     }
+    val appManuallyBlocked = remember(selectedApps) {
+        mutableStateMapOf<String, Boolean>().apply {
+            selectedApps.forEach { this[it.packageName] = false }
+        }
+    }
+
+    val context = LocalContext.current
 
     val currentConfirmTrigger = remember {
         {
-            val limitsList = selectedApps.map { app ->
-                val appNetType = appNetworkTypes[app.packageName] ?: "both"
-                val appLimType = appLimitTypes[app.packageName] ?: "daily"
-
-                val wifiVal = appWifiLimitsInput[app.packageName]?.toLongOrNull() ?: 0L
-                val wifiMult = if (appWifiLimitsUnit[app.packageName] == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
-                
-                val mobileVal = appMobileLimitsInput[app.packageName]?.toLongOrNull() ?: 0L
-                val mobileMult = if (appMobileLimitsUnit[app.packageName] == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
-
-                val singleVal = appLimitsInput[app.packageName]?.toLongOrNull() ?: 0L
-                val singleMult = if (appLimitsUnit[app.packageName] == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
-
-                val isWifiOver = (appNetType == "both" && wifiVal == 0L) || (appNetType == "wifi" && singleVal == 0L)
-                val isMobileOver = (appNetType == "both" && mobileVal == 0L) || (appNetType == "mobile" && singleVal == 0L)
-                val isBlocked = (appNetType != "both" && singleVal == 0L) || (appNetType == "both" && isWifiOver && isMobileOver)
-
-                AppLimit(
-                    packageName = app.packageName,
-                    appName = app.name,
-                    dataLimit = if (appNetType != "both") singleVal * singleMult else 0L,
-                    limitType = appLimType,
-                    networkType = appNetType,
-                    wifiDataLimit = if (appNetType == "both") wifiVal * wifiMult else if (appNetType == "wifi") singleVal * singleMult else 0L,
-                    mobileDataLimit = if (appNetType == "both") mobileVal * mobileMult else if (appNetType == "mobile") singleVal * singleMult else 0L,
-                    isAlwaysBlocked = false,
-                    isBlocked = isBlocked,
-                    isWifiBlocked = isWifiOver,
-                    isMobileBlocked = isMobileOver
-                )
+            var allValid = true
+            for (app in selectedApps) {
+                val appNetTypes = appNetworkTypes[app.packageName] ?: emptySet()
+                if (appNetTypes.isEmpty()) {
+                    android.widget.Toast.makeText(context, "${app.name} Limit not selected", android.widget.Toast.LENGTH_SHORT).show()
+                    allValid = false
+                    break
+                }
             }
-            onConfirm(limitsList)
+
+            if (allValid) {
+                val limitsList = selectedApps.map { app ->
+                    val appNetTypes = appNetworkTypes[app.packageName] ?: setOf("four_g")
+                    val appNetTypeStr = appNetTypes.joinToString(",")
+                    val appLimType = appLimitTypes[app.packageName] ?: "daily"
+
+                    AppLimit(
+                        packageName = app.packageName,
+                        appName = app.name,
+                        dataLimit = if (appNetTypes.contains("four_g")) UnitUtils.uiStateToBytes(appLimitsInput[app.packageName] ?: "100", appLimitsUnit[app.packageName] ?: "MB") else 0L,
+                        limitType = appLimType,
+                        networkType = appNetTypeStr,
+                        wifiDataLimit = if (appNetTypes.contains("wifi")) UnitUtils.uiStateToBytes(appWifiLimitsInput[app.packageName] ?: "100", appWifiLimitsUnit[app.packageName] ?: "MB") else 0L,
+                        mobileDataLimit = if (appNetTypes.contains("mobile")) UnitUtils.uiStateToBytes(appMobileLimitsInput[app.packageName] ?: "100", appMobileLimitsUnit[app.packageName] ?: "MB") else 0L,
+                        isManuallyBlocked = appManuallyBlocked[app.packageName] ?: false
+                    )
+                }
+                onConfirm(limitsList)
+            }
         }
     }
     
@@ -599,30 +601,33 @@ fun BatchConfigurationContent(
                 Spacer(modifier = Modifier.height(8.dp))
                 FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NetworkChip(
-                        selected = networkType == "both",
+                        selected = networkTypes.contains("wifi"),
                         onClick = {
-                            networkType = "both"
-                            selectedApps.forEach { appNetworkTypes[it.packageName] = "both" }
-                        },
-                        label = stringResource(R.string.label_both),
-                        icon = Icons.Rounded.Language
-                    )
-                    NetworkChip(
-                        selected = networkType == "wifi",
-                        onClick = {
-                            networkType = "wifi"
-                            selectedApps.forEach { appNetworkTypes[it.packageName] = "wifi" }
+                            val newTypes = if (networkTypes.contains("wifi")) networkTypes - "wifi" else networkTypes + "wifi"
+                            networkTypes = newTypes
+                            selectedApps.forEach { appNetworkTypes[it.packageName] = newTypes }
                         },
                         label = stringResource(R.string.label_wifi),
                         icon = Icons.Rounded.Wifi
                     )
                     NetworkChip(
-                        selected = networkType == "mobile",
+                        selected = networkTypes.contains("mobile"),
                         onClick = {
-                            networkType = "mobile"
-                            selectedApps.forEach { appNetworkTypes[it.packageName] = "mobile" }
+                            val newTypes = if (networkTypes.contains("mobile")) networkTypes - "mobile" else networkTypes + "mobile"
+                            networkTypes = newTypes
+                            selectedApps.forEach { appNetworkTypes[it.packageName] = newTypes }
                         },
                         label = stringResource(R.string.label_mobile),
+                        icon = Icons.Rounded.SignalCellularAlt
+                    )
+                    NetworkChip(
+                        selected = networkTypes.contains("four_g"),
+                        onClick = {
+                            val newTypes = if (networkTypes.contains("four_g")) networkTypes - "four_g" else networkTypes + "four_g"
+                            networkTypes = newTypes
+                            selectedApps.forEach { appNetworkTypes[it.packageName] = newTypes }
+                        },
+                        label = stringResource(R.string.label_four_g),
                         icon = Icons.Rounded.SignalCellularAlt
                     )
                 }
@@ -675,45 +680,44 @@ fun BatchConfigurationContent(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                if (networkType == "both") {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_wifi_limit), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            LimitInputRow(
-                                value = defaultWifiLimitInput,
-                                onValueChange = {
-                                    defaultWifiLimitInput = it
-                                    selectedApps.forEach { app -> appWifiLimitsInput[app.packageName] = it }
-                                },
-                                unit = defaultWifiLimitUnit,
-                                onUnitChange = {
-                                    defaultWifiLimitUnit = it
-                                    selectedApps.forEach { app -> appWifiLimitsUnit[app.packageName] = it }
-                                }
-                            )
+                if (networkTypes.contains("wifi")) {
+                    Text(stringResource(R.string.settings_wifi_limit), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LimitInputRow(
+                        value = defaultWifiLimitInput,
+                        onValueChange = { valVal ->
+                            defaultWifiLimitInput = valVal
+                            selectedApps.forEach { appWifiLimitsInput[it.packageName] = valVal }
+                        },
+                        unit = defaultWifiLimitUnit,
+                        onUnitChange = { unitVal ->
+                            defaultWifiLimitUnit = unitVal
+                            selectedApps.forEach { appWifiLimitsUnit[it.packageName] = unitVal }
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_mobile_limit), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            LimitInputRow(
-                                value = defaultMobileLimitInput,
-                                onValueChange = {
-                                    defaultMobileLimitInput = it
-                                    selectedApps.forEach { app -> appMobileLimitsInput[app.packageName] = it }
-                                },
-                                unit = defaultMobileLimitUnit,
-                                onUnitChange = {
-                                    defaultMobileLimitUnit = it
-                                    selectedApps.forEach { app -> appMobileLimitsUnit[app.packageName] = it }
-                                }
-                            )
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (networkTypes.contains("mobile")) {
+                    Text(stringResource(R.string.settings_mobile_limit), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LimitInputRow(
+                        value = defaultMobileLimitInput,
+                        onValueChange = { valVal ->
+                            defaultMobileLimitInput = valVal
+                            selectedApps.forEach { appMobileLimitsInput[it.packageName] = valVal }
+                        },
+                        unit = defaultMobileLimitUnit,
+                        onUnitChange = { unitVal ->
+                            defaultMobileLimitUnit = unitVal
+                            selectedApps.forEach { appMobileLimitsUnit[it.packageName] = unitVal }
                         }
-                    }
-                } else {
-                    val dynamicLabel = if (networkType == "wifi") stringResource(R.string.settings_wifi_limit) else stringResource(R.string.settings_mobile_limit)
-                    Text(dynamicLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (networkTypes.contains("four_g")) {
+                    Text(stringResource(R.string.settings_four_g_limit), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(6.dp))
                     LimitInputRow(
                         value = defaultLimitInput,
@@ -766,7 +770,7 @@ fun BatchConfigurationContent(
             val currentAppLimitType = appLimitTypes[app.packageName] ?: "daily"
             val appIcon = remember(app.packageName) {
                 try {
-                    context.packageManager.getApplicationIcon(app.packageName)
+                    context.packageManager.getApplicationIcon(app.packageName).toBitmap(120, 120).asImageBitmap()
                 } catch (_: Exception) {
                     null
                 }
@@ -780,13 +784,9 @@ fun BatchConfigurationContent(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
             ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    // App Header Row
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Surface(
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceContainerHighest,
                             modifier = Modifier.size(36.dp)
@@ -797,7 +797,7 @@ fun BatchConfigurationContent(
                             ) {
                                 if (appIcon != null) {
                                     Image(
-                                        bitmap = appIcon.toBitmap(width = 72, height = 72).asImageBitmap(),
+                                        bitmap = appIcon,
                                         contentDescription = null,
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -831,41 +831,77 @@ fun BatchConfigurationContent(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
+
+                        val isBlocked = appManuallyBlocked[app.packageName] ?: false
+                        FilledTonalButton(
+                            onClick = { appManuallyBlocked[app.packageName] = !isBlocked },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = if (isBlocked) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
+                                contentColor = if (isBlocked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isBlocked) Icons.Rounded.Block else Icons.Rounded.CheckCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isBlocked) "Blocked" else "Block Internet",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    val currentAppNetworkTypes = appNetworkTypes[app.packageName] ?: setOf("four_g")
+                    val currentAppLimitType = appLimitTypes[app.packageName] ?: "daily"
+                    
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1.2f)) {
+                        Column(modifier = Modifier.weight(1.3f)) {
                             Text(stringResource(R.string.label_network_type), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 MiniChip(
-                                    selected = currentAppNetworkType == "both",
-                                    onClick = { appNetworkTypes[app.packageName] = "both" },
-                                    label = stringResource(R.string.label_both)
-                                )
-                                MiniChip(
-                                    selected = currentAppNetworkType == "wifi",
-                                    onClick = { appNetworkTypes[app.packageName] = "wifi" },
+                                    selected = currentAppNetworkTypes.contains("wifi"),
+                                    onClick = {
+                                        val current = appNetworkTypes[app.packageName] ?: setOf("four_g")
+                                        appNetworkTypes[app.packageName] = if (current.contains("wifi")) current - "wifi" else current + "wifi"
+                                    },
                                     label = stringResource(R.string.label_wifi)
                                 )
                                 MiniChip(
-                                    selected = currentAppNetworkType == "mobile",
-                                    onClick = { appNetworkTypes[app.packageName] = "mobile" },
+                                    selected = currentAppNetworkTypes.contains("mobile"),
+                                    onClick = {
+                                        val current = appNetworkTypes[app.packageName] ?: setOf("four_g")
+                                        appNetworkTypes[app.packageName] = if (current.contains("mobile")) current - "mobile" else current + "mobile"
+                                    },
                                     label = stringResource(R.string.label_mobile)
+                                )
+                                MiniChip(
+                                    selected = currentAppNetworkTypes.contains("four_g"),
+                                    onClick = {
+                                        val current = appNetworkTypes[app.packageName] ?: setOf("four_g")
+                                        appNetworkTypes[app.packageName] = if (current.contains("four_g")) current - "four_g" else current + "four_g"
+                                    },
+                                    label = stringResource(R.string.label_four_g)
                                 )
                             }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(0.8f)) {
+                        Column(modifier = Modifier.weight(0.7f)) {
                             Text(stringResource(R.string.label_limit_period), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 MiniChip(
                                     selected = currentAppLimitType == "daily",
                                     onClick = { appLimitTypes[app.packageName] = "daily" },
@@ -882,33 +918,32 @@ fun BatchConfigurationContent(
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    if (currentAppNetworkType == "both") {
-                        Row(modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(stringResource(R.string.settings_wifi_limit), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                LimitInputRow(
-                                    value = appWifiLimitsInput[app.packageName] ?: "100",
-                                    onValueChange = { appWifiLimitsInput[app.packageName] = it },
-                                    unit = appWifiLimitsUnit[app.packageName] ?: "MB",
-                                    onUnitChange = { appWifiLimitsUnit[app.packageName] = it }
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(stringResource(R.string.settings_mobile_limit), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                LimitInputRow(
-                                    value = appMobileLimitsInput[app.packageName] ?: "50",
-                                    onValueChange = { appMobileLimitsInput[app.packageName] = it },
-                                    unit = appMobileLimitsUnit[app.packageName] ?: "MB",
-                                    onUnitChange = { appMobileLimitsUnit[app.packageName] = it }
-                                )
-                            }
-                        }
-                    } else {
-                        val dynamicLabel = if (currentAppNetworkType == "wifi") stringResource(R.string.settings_wifi_limit) else stringResource(R.string.settings_mobile_limit)
-                        Text(dynamicLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    if (currentAppNetworkTypes.contains("wifi")) {
+                        Text(stringResource(R.string.settings_wifi_limit), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        LimitInputRow(
+                            value = appWifiLimitsInput[app.packageName] ?: "100",
+                            onValueChange = { appWifiLimitsInput[app.packageName] = it },
+                            unit = appWifiLimitsUnit[app.packageName] ?: "MB",
+                            onUnitChange = { appWifiLimitsUnit[app.packageName] = it }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    
+                    if (currentAppNetworkTypes.contains("mobile")) {
+                        Text(stringResource(R.string.settings_mobile_limit), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        LimitInputRow(
+                            value = appMobileLimitsInput[app.packageName] ?: "100",
+                            onValueChange = { appMobileLimitsInput[app.packageName] = it },
+                            unit = appMobileLimitsUnit[app.packageName] ?: "MB",
+                            onUnitChange = { appMobileLimitsUnit[app.packageName] = it }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    if (currentAppNetworkTypes.contains("four_g")) {
+                        Text(stringResource(R.string.settings_four_g_limit), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
                         LimitInputRow(
                             value = appLimitsInput[app.packageName] ?: "100",
@@ -967,13 +1002,13 @@ fun ConfigurationContent(
     onLimitUnitChange: (String) -> Unit,
     limitType: String,
     onLimitTypeChange: (String) -> Unit,
-    networkType: String,
-    onNetworkTypeChange: (String) -> Unit,
-    wifiLimitInput: String = "100",
+    networkType: Set<String>,
+    onNetworkTypeChange: (Set<String>) -> Unit,
+    wifiLimitInput: String,
     onWifiLimitInputChange: (String) -> Unit = {},
     wifiLimitUnit: String = "MB",
     onWifiLimitUnitChange: (String) -> Unit = {},
-    mobileLimitInput: String = "50",
+    mobileLimitInput: String,
     onMobileLimitInputChange: (String) -> Unit = {},
     mobileLimitUnit: String = "MB",
     onMobileLimitUnitChange: (String) -> Unit = {},
@@ -992,7 +1027,7 @@ fun ConfigurationContent(
             val context = LocalContext.current
             val appIcon = remember(selectedApp.packageName) {
                 try {
-                    context.packageManager.getApplicationIcon(selectedApp.packageName)
+                    context.packageManager.getApplicationIcon(selectedApp.packageName).toBitmap(120, 120).asImageBitmap()
                 } catch (_: Exception) {
                     null
                 }
@@ -1012,7 +1047,7 @@ fun ConfigurationContent(
                     ) {
                         if (appIcon != null) {
                             Image(
-                                bitmap = appIcon.toBitmap(width = 96, height = 96).asImageBitmap(),
+                                bitmap = appIcon,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize()
                             )
@@ -1096,13 +1131,13 @@ fun LimitConfigurationContent(
     onLimitUnitChange: (String) -> Unit,
     limitType: String,
     onLimitTypeChange: (String) -> Unit,
-    networkType: String,
-    onNetworkTypeChange: (String) -> Unit,
-    wifiLimitInput: String = "100",
+    networkType: Set<String>,
+    onNetworkTypeChange: (Set<String>) -> Unit,
+    wifiLimitInput: String,
     onWifiLimitInputChange: (String) -> Unit = {},
     wifiLimitUnit: String = "MB",
     onWifiLimitUnitChange: (String) -> Unit = {},
-    mobileLimitInput: String = "50",
+    mobileLimitInput: String,
     onMobileLimitInputChange: (String) -> Unit = {},
     mobileLimitUnit: String = "MB",
     onMobileLimitUnitChange: (String) -> Unit = {}
@@ -1111,14 +1146,29 @@ fun LimitConfigurationContent(
         Text(stringResource(R.string.label_network_type), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
         FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            NetworkChip(selected = networkType == "both", onClick = { onNetworkTypeChange("both") }, label = stringResource(R.string.label_both), icon = Icons.Rounded.Language)
-            NetworkChip(selected = networkType == "wifi", onClick = { onNetworkTypeChange("wifi") }, label = stringResource(R.string.label_wifi), icon = Icons.Rounded.Wifi)
-            NetworkChip(selected = networkType == "mobile", onClick = { onNetworkTypeChange("mobile") }, label = stringResource(R.string.label_mobile), icon = Icons.Rounded.SignalCellularAlt)
+                NetworkChip(
+                    selected = networkType.contains("wifi"),
+                    onClick = { onNetworkTypeChange(if (networkType.contains("wifi")) networkType - "wifi" else networkType + "wifi") },
+                    label = stringResource(R.string.label_wifi),
+                    icon = Icons.Rounded.Wifi
+                )
+                NetworkChip(
+                    selected = networkType.contains("mobile"),
+                    onClick = { onNetworkTypeChange(if (networkType.contains("mobile")) networkType - "mobile" else networkType + "mobile") },
+                    label = stringResource(R.string.label_mobile),
+                    icon = Icons.Rounded.SignalCellularAlt
+                )
+                NetworkChip(
+                    selected = networkType.contains("four_g"),
+                    onClick = { onNetworkTypeChange(if (networkType.contains("four_g")) networkType - "four_g" else networkType + "four_g") },
+                    label = stringResource(R.string.label_four_g),
+                    icon = Icons.Rounded.SignalCellularAlt
+                )
         }
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        if (networkType == "both") {
+        if (networkType.contains("wifi")) {
             Text(stringResource(R.string.settings_wifi_limit), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             LimitInputRow(
@@ -1127,9 +1177,10 @@ fun LimitConfigurationContent(
                 unit = wifiLimitUnit,
                 onUnitChange = onWifiLimitUnitChange
             )
-
             Spacer(modifier = Modifier.height(28.dp))
+        }
 
+        if (networkType.contains("mobile")) {
             Text(stringResource(R.string.settings_mobile_limit), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             LimitInputRow(
@@ -1138,9 +1189,11 @@ fun LimitConfigurationContent(
                 unit = mobileLimitUnit,
                 onUnitChange = onMobileLimitUnitChange
             )
-        } else {
-            val dynamicLimitLabel = if (networkType == "wifi") stringResource(R.string.settings_wifi_limit) else stringResource(R.string.settings_mobile_limit)
-            Text(dynamicLimitLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(28.dp))
+        }
+
+        if (networkType.contains("four_g")) {
+            Text(stringResource(R.string.settings_four_g_limit), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             LimitInputRow(
                 value = limitInput,
@@ -1148,9 +1201,8 @@ fun LimitConfigurationContent(
                 unit = limitUnit,
                 onUnitChange = onLimitUnitChange
             )
+            Spacer(modifier = Modifier.height(28.dp))
         }
-
-        Spacer(modifier = Modifier.height(28.dp))
 
         Text(stringResource(R.string.label_limit_period), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))

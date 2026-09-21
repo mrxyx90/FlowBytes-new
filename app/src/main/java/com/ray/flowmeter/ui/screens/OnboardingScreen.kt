@@ -3,10 +3,8 @@
 package com.ray.flowmeter.ui.screens
 
 import android.annotation.SuppressLint
-import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -23,7 +21,6 @@ import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,7 +31,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -54,11 +50,9 @@ fun OnboardingScreen(
     var usageAccessGranted by remember { mutableStateOf(hasUsageAccess(context)) }
 
     // Notification permission only needed on Android 13+
-    val notificationPermissionState = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        rememberPermissionState(android.Manifest.permission.POST_NOTIFICATIONS)
-    } else {
-        null
-    }
+    val notificationPermissionState = rememberPermissionState(android.Manifest.permission.POST_NOTIFICATIONS)
+
+    val phoneStatePermissionState = rememberPermissionState(android.Manifest.permission.READ_PHONE_STATE)
 
     val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
     var isIgnoringBatteryOptimizations by remember {
@@ -81,8 +75,11 @@ fun OnboardingScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
-            // Get Started is locked until all three permissions are granted
-            val isEnabled = usageAccessGranted && (notificationPermissionState?.status?.isGranted != false) && isIgnoringBatteryOptimizations
+            // Get Started is locked until all required permissions are granted
+            val isEnabled = usageAccessGranted && 
+                           notificationPermissionState.status.isGranted && 
+                           phoneStatePermissionState.status.isGranted && 
+                           isIgnoringBatteryOptimizations
             val interactionSource = remember { MutableInteractionSource() }
             
             Column(
@@ -90,7 +87,7 @@ fun OnboardingScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 24.dp, top = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Button(
                     onClick = onComplete,
@@ -111,25 +108,6 @@ fun OnboardingScreen(
                         fontWeight = FontWeight.Bold
                     )
                 }
-
-                if (!isEnabled) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    TextButton(
-                        onClick = onComplete,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .bounceClick(),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.btn_skip_for_now),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
             }
         }
     ) { innerPadding ->
@@ -142,13 +120,13 @@ fun OnboardingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             StaggeredEntrance(index = 0) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(220.dp),
+                        .height(200.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Surface(
@@ -205,23 +183,34 @@ fun OnboardingScreen(
                 }
             }
 
-            if (notificationPermissionState != null) {
-                Spacer(modifier = Modifier.height(16.dp))
-                StaggeredEntrance(index = 4) {
-                    PermissionItem(
-                        title = stringResource(R.string.label_notifications),
-                        description = stringResource(R.string.desc_notifications),
-                        icon = Icons.Rounded.Notifications,
-                        isGranted = notificationPermissionState.status.isGranted
-                    ) {
-                        notificationPermissionState.launchPermissionRequest()
-                    }
+            Spacer(modifier = Modifier.height(16.dp))
+            StaggeredEntrance(index = 4) {
+                PermissionItem(
+                    title = stringResource(R.string.label_notifications),
+                    description = stringResource(R.string.desc_notifications),
+                    icon = Icons.Rounded.Notifications,
+                    isGranted = notificationPermissionState.status.isGranted
+                ) {
+                    notificationPermissionState.launchPermissionRequest()
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             StaggeredEntrance(index = 5) {
+                PermissionItem(
+                    title = stringResource(R.string.label_phone_state),
+                    description = stringResource(R.string.desc_phone_state),
+                    icon = Icons.Rounded.Info,
+                    isGranted = phoneStatePermissionState.status.isGranted
+                ) {
+                    phoneStatePermissionState.launchPermissionRequest()
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            StaggeredEntrance(index = 6) {
                 PermissionItem(
                     title = stringResource(R.string.label_battery_optimization),
                     description = stringResource(R.string.desc_battery_optimization),

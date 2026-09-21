@@ -6,6 +6,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,12 +18,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import com.ray.flowmeter.R
 import com.ray.flowmeter.data.AppLimit
 import com.ray.flowmeter.ui.dialogs.AnimatedDialogContent
+import com.ray.flowmeter.utils.UnitUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,31 +31,35 @@ fun AppLimitEditScreen(
     onBack: () -> Unit,
     onConfirm: (AppLimit) -> Unit,
 ) {
-    val (limitInput, setLimitInput) = remember(limit) {
-        val mb = limit.dataLimit / (1024 * 1024)
-        mutableStateOf(if (((limit.dataLimit % (1024 * 1024 * 1024)) == 0L) && (limit.dataLimit > 0)) (limit.dataLimit / (1024 * 1024 * 1024)).toString() else mb.toString())
+    val initialData = remember(limit) { UnitUtils.bytesToUiState(limit.dataLimit) }
+    val (limitInput, setLimitInput) = remember(limit) { 
+        mutableStateOf(if (limit.dataLimit <= 0L) "100" else initialData.first) 
     }
-    val (limitUnit, setLimitUnit) = remember(limit) {
-        mutableStateOf(if ((limit.dataLimit >= 1024L * 1024L * 1024L) && (limit.dataLimit % (1024L * 1024L * 1024L) == 0L)) "GB" else "MB")
+    val (limitUnit, setLimitUnit) = remember(limit) { mutableStateOf(initialData.second) }
+
+    val initialWifi = remember(limit) { UnitUtils.bytesToUiState(limit.wifiDataLimit) }
+    val (wifiLimitInput, setWifiLimitInput) = remember(limit) { 
+        mutableStateOf(if (limit.wifiDataLimit <= 0L) "100" else initialWifi.first) 
     }
+    val (wifiLimitUnit, setWifiLimitUnit) = remember(limit) { mutableStateOf(initialWifi.second) }
+
+    val initialMobile = remember(limit) { UnitUtils.bytesToUiState(limit.mobileDataLimit) }
+    val (mobileLimitInput, setMobileLimitInput) = remember(limit) { 
+        mutableStateOf(if (limit.mobileDataLimit <= 0L) "100" else initialMobile.first) 
+    }
+    val (mobileLimitUnit, setMobileLimitUnit) = remember(limit) { mutableStateOf(initialMobile.second) }
+
     val (limitType, setLimitType) = remember(limit) { mutableStateOf(limit.limitType) }
-    val (networkType, setNetworkType) = remember(limit) { mutableStateOf(limit.networkType) }
+    val (networkType, setNetworkType) = remember(limit) {
+        val initialTypes = if (limit.networkType == "both") {
+            setOf("wifi", "mobile")
+        } else {
+            limit.networkType.split(",").filter { it.isNotBlank() }.toSet()
+        }
+        mutableStateOf(initialTypes)
+    }
 
-    val (wifiLimitInput, setWifiLimitInput) = remember(limit) {
-        val mb = limit.wifiDataLimit / (1024 * 1024)
-        mutableStateOf(if (((limit.wifiDataLimit % (1024L * 1024L * 1024L)) == 0L) && (limit.wifiDataLimit > 0)) (limit.wifiDataLimit / (1024 * 1024 * 1024)).toString() else mb.toString())
-    }
-    val (wifiLimitUnit, setWifiLimitUnit) = remember(limit) {
-        mutableStateOf(if ((limit.wifiDataLimit >= 1024L * 1024L * 1024L) && (limit.wifiDataLimit % (1024L * 1024L * 1024L) == 0L)) "GB" else "MB")
-    }
-
-    val (mobileLimitInput, setMobileLimitInput) = remember(limit) {
-        val mb = limit.mobileDataLimit / (1024 * 1024)
-        mutableStateOf(if (((limit.mobileDataLimit % (1024L * 1024L * 1024L)) == 0L) && (limit.mobileDataLimit > 0)) (limit.mobileDataLimit / (1024 * 1024 * 1024)).toString() else mb.toString())
-    }
-    val (mobileLimitUnit, setMobileLimitUnit) = remember(limit) {
-        mutableStateOf(if ((limit.mobileDataLimit >= 1024L * 1024L * 1024L) && (limit.mobileDataLimit % (1024L * 1024L * 1024L) == 0L)) "GB" else "MB")
-    }
+    var isManuallyBlocked by remember(limit) { mutableStateOf(limit.isManuallyBlocked) }
 
     val context = LocalContext.current
     val appIcon = remember(limit.packageName) {
@@ -95,7 +101,7 @@ fun AppLimitEditScreen(
                                 Box(Modifier.padding(10.dp)) {
                                     appIcon?.let {
                                         Image(
-                                            bitmap = it.toBitmap(width = 96, height = 96).asImageBitmap(),
+                                            bitmap = it.toBitmap(120, 120).asImageBitmap(),
                                             contentDescription = null,
                                             modifier = Modifier.fillMaxSize(),
                                         )
@@ -103,9 +109,32 @@ fun AppLimitEditScreen(
                                 }
                             }
                             Spacer(modifier = Modifier.width(16.dp))
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(limit.appName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
                                 Text(limit.packageName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+
+                            FilledTonalButton(
+                                onClick = { isManuallyBlocked = !isManuallyBlocked },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = if (isManuallyBlocked) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
+                                    contentColor = if (isManuallyBlocked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp),
+                                modifier = Modifier.height(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isManuallyBlocked) Icons.Rounded.Block else Icons.Rounded.CheckCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (isManuallyBlocked) "Blocked" else "Block Internet",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     },
@@ -128,32 +157,23 @@ fun AppLimitEditScreen(
                     confirmButtonText = stringResource(R.string.btn_save_config),
                     onCancel = onBack,
                     onConfirm = {
-                        val value = limitInput.toLongOrNull() ?: 0L
-                        val multiplier = if (limitUnit == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
-
-                        val wifiValue = wifiLimitInput.toLongOrNull() ?: 0L
-                        val wifiMultiplier = if (wifiLimitUnit == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
-
-                        val mobileValue = mobileLimitInput.toLongOrNull() ?: 0L
-                        val mobileMultiplier = if (mobileLimitUnit == "GB") 1024L * 1024L * 1024L else 1024L * 1024L
-
-                        val isWifiOver = (networkType == "both" && wifiValue == 0L) || (networkType == "wifi" && value == 0L)
-                        val isMobileOver = (networkType == "both" && mobileValue == 0L) || (networkType == "mobile" && value == 0L)
-                        val isBlocked = (networkType != "both" && value == 0L) || (networkType == "both" && isWifiOver && isMobileOver)
-
-                        onConfirm(
-                            limit.copy(
-                                dataLimit = value * multiplier,
-                                limitType = limitType,
-                                networkType = networkType,
-                                wifiDataLimit = wifiValue * wifiMultiplier,
-                                mobileDataLimit = mobileValue * mobileMultiplier,
-                                isAlwaysBlocked = false,
-                                isBlocked = isBlocked,
-                                isWifiBlocked = isWifiOver,
-                                isMobileBlocked = isMobileOver,
+                        if (networkType.isEmpty()) {
+                            android.widget.Toast.makeText(context, "${limit.appName} Limit not selected", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            onConfirm(
+                                limit.copy(
+                                    dataLimit = UnitUtils.uiStateToBytes(limitInput, limitUnit),
+                                    limitType = limitType,
+                                    networkType = networkType.joinToString(","),
+                                    wifiDataLimit = UnitUtils.uiStateToBytes(wifiLimitInput, wifiLimitUnit),
+                                    mobileDataLimit = UnitUtils.uiStateToBytes(mobileLimitInput, mobileLimitUnit),
+                                    isBlocked = false,
+                                    isWifiBlocked = false,
+                                    isMobileBlocked = false,
+                                    isManuallyBlocked = isManuallyBlocked,
+                                )
                             )
-                        )
+                        }
                     }
                 )
             }

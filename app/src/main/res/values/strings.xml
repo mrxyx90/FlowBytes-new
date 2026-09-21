@@ -1,4 +1,4 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="app_name">FlowBytes</string>
 
     <!-- Screen Titles -->
@@ -35,6 +35,7 @@
     <string name="label_mobile">Mobile</string>
     <string name="label_wifi">Wi-Fi</string>
     <string name="label_combined">Combined</string>
+    <string name="label_four_g">4G</string>
     <string name="label_todays_usage">Today\'s usage</string>
     <string name="label_usage_summary">Usage Summary</string>
     <string name="msg_no_usage_recorded">No data usage recorded yet</string>
@@ -46,6 +47,7 @@
     <string name="filter_mobile_wifi">Mobile &amp; Wi-Fi</string>
     <string name="filter_mobile_only">Mobile Only</string>
     <string name="filter_wifi_only">Wi-Fi Only</string>
+    <string name="filter_four_g_only">4G Only</string>
     <string name="btn_ok">OK</string>
     <string name="btn_cancel">Cancel</string>
     <string name="btn_delete">Delete</string>
@@ -60,6 +62,7 @@
     <string name="label_mobile_usage">Mobile</string>
     <string name="label_wifi_colon">Wi-Fi:</string>
     <string name="label_mobile_colon">Mobile:</string>
+    <string name="label_four_g_colon">4G:</string>
     <string name="label_system_apps">System apps</string>
     <string name="title_system_data_usage">System data usage</string>
     <string name="label_system_processes">System processes</string>
@@ -116,6 +119,7 @@
     <string name="settings_data_alerts_desc">Get notified when apps consume excessive background data</string>
     <string name="settings_mobile_limit">Mobile Data Limit</string>
     <string name="settings_wifi_limit">Wi-Fi Data Limit</string>
+    <string name="settings_four_g_limit">4G Data Limit</string>
 
     <string name="label_plan_duration">Plan Duration</string>
     <string name="msg_alert_muted">Alert Muted</string>
@@ -256,7 +260,6 @@
     <string name="title_custom_color">Customize Color</string>
     <string name="btn_apply">Apply</string>
     <string name="btn_get_started">Get Started</string>
-    <string name="btn_skip_for_now">Skip for now</string>
     <string name="title_welcome">Welcome to FlowBytes</string>
     <string name="msg_onboarding_desc">To provide accurate data tracking and live speed monitoring, we need a few permissions.</string>
     <string name="label_usage_access">Usage Access</string>
@@ -265,6 +268,8 @@
     <string name="desc_notifications">Required to show live speed in the status bar.</string>
     <string name="label_battery_optimization">Battery Optimization</string>
     <string name="desc_battery_optimization">Required to keep the speed monitor running in the background.</string>
+    <string name="label_phone_state">Phone State</string>
+    <string name="desc_phone_state">Required to accurately detect 4G/LTE connectivity for specialized tracking.</string>
     <string name="label_granted">Granted</string>
     <string name="btn_grant">Grant</string>
     <string name="title_traffic_settings">High Data Alert Settings</string>
@@ -382,10 +387,14 @@
     <string name="label_custom_wifi">Custom Wi-Fi</string>
     <string name="label_custom_mobile">Custom Mobile</string>
     <string name="settings_traffic_threshold_subtitle">Configure speed and duration limits for alerts</string>
-    <string name="whats_new_custom_limits_title">Custom Date Range Limits</string>
-    <string name="whats_new_custom_limits_desc">You can now set data limits for specific date ranges across both Mobile and Wi-Fi networks.</string>
-    <string name="whats_new_reset_day_title">Monthly Reset Day</string>
-    <string name="whats_new_reset_day_desc">Support for custom billing cycles. Choose a specific day of the month for your usage to reset.</string>
+    <string name="whats_new_multi_network_title">Multi-Network Limits</string>
+    <string name="whats_new_multi_network_desc">Set data limits for multiple network types (Wi-Fi, Mobile, 4G) simultaneously for any app.</string>
+    <string name="whats_new_performance_title">Smart Monitoring</string>
+    <string name="whats_new_performance_desc">Dual-frequency monitoring logic ensures accurate tracking while significantly reducing battery consumption.</string>
+    <string name="whats_new_firewall_title">Integrated Firewall</string>
+    <string name="whats_new_firewall_desc">Block internet access instantly by setting a 0MB limit. Enhanced VPN engine handles rules with zero latency.</string>
+    <string name="whats_new_modern_ui_title">Android 14 Optimized</string>
+    <string name="whats_new_modern_ui_desc">Full cleanup for API 34. Improved theme stability, AMOLED support, and streamlined settings navigation.</string>
     <string name="feedback_email_subject" tools:ignore="PluralsCandidate">FlowBytes Feedback - %1$d Stars</string>
 
     <string name="legal_privacy_policy">Privacy Policy\nEffective Date: April 29, 2026\n\nI, the developer of FlowBytes (the \"App\"), provide this application free of charge. The App is offered as-is and is intended for use without any warranties or guarantees.\n\n1. Information Collection and Use\nFlowBytes monitors your device\'s network speeds and data usage (Wi-Fi and cellular) to help you stay in control of your internet. All monitoring, data usage calculations, and blocking actions are performed locally on your device. We do not collect, store, or transmit any personal data, including:\n- Browsing history\n- Network traffic content\n- IP address\n- Any personally identifiable information\n\n2. Required Permissions\nTo function correctly, the App requires the following permissions:\n- Usage Access (Network Stats): Used to access network usage statistics (via NetworkStatsManager and TrafficStats) in order to calculate download/upload speeds and track data usage per app.\n- Foreground Service: Allows the App to run a background service to display real-time network speed in the notification bar and ensure consistent monitoring.\n- VPN Service (Local VPN): FlowBytes uses a local VPN to manage internet access for apps that exceed their limits. This VPN is 100% local; your traffic never leaves your device and is never intercepted by us.\n\nAll data accessed through these permissions remains on your device and is used solely to provide the monitoring and control features within the App.\n\n3. Third-Party Services\nThe App does not use any third-party services, analytics tools, or advertising networks that collect information used to identify you.\n\n4. Security\nSince all data processing occurs locally on your device, the risk of data breaches from our side is minimal. However, no method of electronic storage or transmission over the internet is completely secure, and we cannot guarantee absolute security.\n\n5. Children’s Privacy\nThis Service is not intended for individuals under the age of 13. We do not knowingly collect personally identifiable information from children under 13.\n\n6. Changes to This Privacy Policy\nWe may update this Privacy Policy from time to time. Any changes will be posted on this page. You are advised to review this page periodically for updates.\n\n7. Contact Us\nIf you have any questions or suggestions about this Privacy Policy, you can contact us at:\nEmail: support.rayylabs@gmail.com</string>
@@ -398,6 +407,8 @@
     <string name="label_monthly_mobile_limit">Monthly Mobile Limit</string>
     <string name="label_custom_wifi_limit">Custom Wi-Fi Limit</string>
     <string name="label_custom_mobile_limit">Custom Mobile Limit</string>
+    <string name="label_daily_four_g_limit">Daily 4G Limit</string>
+    <string name="label_daily_four_g">Daily 4G</string>
     <string name="label_unknown">Unknown</string>
     <string name="desc_configure_limit_format">Configure limit for your %1$s plan.</string>
     <string name="label_select_date">Select Date</string>
@@ -458,7 +469,7 @@
     <string name="settings_check_updates_desc">Ensure your app is running the latest version</string>
     <string name="toast_app_up_to_date">FlowBytes is up to date!</string>
     <string name="toast_update_check_failed">Failed to check for updates. Please try again later.</string>
-    <string name="toast_checking_updates">Checking for updates...</string>
+    <string name="toast_checking_updates">Checking for updates&#8230;</string>
 
     <!-- Strings extracted from Kotlin files -->
     <string name="msg_usage_stats_permission_disabled">Usage stats permission disabled. Tap to grant.</string>

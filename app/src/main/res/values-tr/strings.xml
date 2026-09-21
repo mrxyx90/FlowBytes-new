@@ -236,7 +236,6 @@
     <string name="title_custom_color">Rengi Özelleştir</string>
     <string name="btn_apply">Uygula</string>
     <string name="btn_get_started">Başlayın</string>
-    <string name="btn_skip_for_now">Şimdilik Atla</string>
     <string name="title_welcome">FlowBytes\'a Hoş Geldiniz</string>
     <string name="msg_onboarding_desc">Doğru veri takibi ve canlı hız izleme sağlamak için birkaç izne ihtiyacımız var.</string>
     <string name="label_usage_access">Kullanım Erişimi</string>
@@ -354,10 +353,14 @@
     <string name="label_custom_wifi">Özel Wi-Fi</string>
     <string name="label_custom_mobile">Özel Mobil</string>
     <string name="settings_traffic_threshold_subtitle">Uyarılar için hız ve süre limitlerini yapılandırın</string>
-    <string name="whats_new_custom_limits_title">Özel Tarih Aralığı Limitleri</string>
-    <string name="whats_new_custom_limits_desc">Artık hem Mobil hem de Wi-Fi ağlarında belirli tarih aralıkları için veri limitleri ayarlayabilirsiniz.</string>
-    <string name="whats_new_reset_day_title">Aylık Sıfırlama Günü</string>
-    <string name="whats_new_reset_day_desc">Özel fatura döngüleri desteği. Kullanımınızın sıfırlanması için ayın belirli bir gününü seçin.</string>
+    <string name="whats_new_multi_network_title">Multi-Network Limits</string>
+    <string name="whats_new_multi_network_desc">Set data limits for multiple network types (Wi-Fi, Mobile, 4G) simultaneously for any app.</string>
+    <string name="whats_new_performance_title">Smart Monitoring</string>
+    <string name="whats_new_performance_desc">Dual-frequency monitoring logic ensures accurate tracking while significantly reducing battery consumption.</string>
+    <string name="whats_new_firewall_title">Integrated Firewall</string>
+    <string name="whats_new_firewall_desc">Block internet access instantly by setting a 0MB limit. Enhanced VPN engine handles rules with zero latency.</string>
+    <string name="whats_new_modern_ui_title">Android 14 Optimized</string>
+    <string name="whats_new_modern_ui_desc">Full cleanup for API 34. Improved theme stability, AMOLED support, and streamlined settings navigation.</string>
 
     <string name="label_daily_wifi_limit">Günlük Wi-Fi Limiti</string>
     <string name="label_monthly_wifi_limit">Aylık Wi-Fi Limiti</string>
@@ -423,7 +426,7 @@
     <string name="settings_check_updates_desc">Uygulamanızın en son sürümü çalıştırdığından emin olun</string>
     <string name="toast_app_up_to_date">FlowBytes güncel!</string>
     <string name="toast_update_check_failed">Güncellemeler kontrol edilemedi. Lütfen daha sonra tekrar deneyin.</string>
-    <string name="toast_checking_updates">Güncellemeler kontrol ediliyor...</string>
+    <string name="toast_checking_updates">Güncellemeler kontrol ediliyor&#8230;</string>
 
     <!-- Strings extracted from Kotlin files -->
     <string name="msg_usage_stats_permission_disabled">Kullanım istatistikleri izni devre dışı. İzin vermek için dokunun.</string>

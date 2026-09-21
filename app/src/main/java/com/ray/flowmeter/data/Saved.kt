@@ -65,7 +65,7 @@ data class AppLimit(
     val appName: String,
     val dataLimit: Long,
     val limitType: String = "daily",
-    val networkType: String = "both",
+    val networkType: String = "four_g",
     val currentUsage: Long = 0L,
     val currentWifiUsage: Long = 0L,
     val currentMobileUsage: Long = 0L,
@@ -76,7 +76,22 @@ data class AppLimit(
     val isWifiBlocked: Boolean = false,
     val isMobileBlocked: Boolean = false,
     val isEnabled: Boolean = true,
-    val isAlwaysBlocked: Boolean = false,
+    val isManuallyBlocked: Boolean = false,
+) {
+    fun isWifiEnabled(): Boolean = networkType.contains("wifi", ignoreCase = true) || networkType.contains("both", ignoreCase = true)
+    fun isMobileEnabled(): Boolean = networkType.contains("mobile", ignoreCase = true) || networkType.contains("both", ignoreCase = true)
+    fun isFourGEnabled(): Boolean = networkType.contains("four_g", ignoreCase = true)
+}
+
+@Entity(tableName = "four_g_sessions")
+data class FourGSession(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val startTime: Long,
+    val endTime: Long,
+    val closed: Boolean = false,
+    val usageBytes: Long = 0L,
+    val usageBytesDown: Long = 0L,
+    val usageBytesUp: Long = 0L,
 )
 
 @Dao
@@ -100,10 +115,32 @@ interface AppLimitDao {
     suspend fun getAppLimit(packageName: String): AppLimit?
 }
 
-@Database(entities = [AppAlert::class, AppLimit::class], version = 8, exportSchema = false)
+@Dao
+interface FourGSessionDao {
+    @Insert
+    suspend fun insert(session: FourGSession): Long
+
+    @Update
+    suspend fun update(session: FourGSession)
+
+    @Query("SELECT * FROM four_g_sessions WHERE closed = 0 ORDER BY startTime DESC LIMIT 1")
+    suspend fun getActiveSession(): FourGSession?
+
+    @Query("SELECT * FROM four_g_sessions WHERE (startTime < :end AND (endTime > :start OR closed = 0))")
+    suspend fun getSessionsInRange(start: Long, end: Long): List<FourGSession>
+
+    @Query("DELETE FROM four_g_sessions WHERE startTime < :timestamp")
+    suspend fun deleteOldSessions(timestamp: Long)
+
+    @Query("UPDATE four_g_sessions SET closed = 1 WHERE closed = 0")
+    suspend fun closeAllSessions()
+}
+
+@Database(entities = [AppAlert::class, AppLimit::class, FourGSession::class], version = 9, exportSchema = false)
 abstract class FlowMeterDatabase : RoomDatabase() {
     abstract fun appAlertDao(): AppAlertDao
     abstract fun appLimitDao(): AppLimitDao
+    abstract fun fourGSessionDao(): FourGSessionDao
 
     companion object {
         @Volatile
@@ -114,7 +151,7 @@ abstract class FlowMeterDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     FlowMeterDatabase::class.java,
-                    "flowmeter_database"
+                    "flowmeter_database",
                 )
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
@@ -167,6 +204,15 @@ class AppLimitRepository(private val appLimitDao: AppLimitDao) {
     }
 }
 
+class FourGSessionRepository(private val fourGSessionDao: FourGSessionDao) {
+    suspend fun insert(session: FourGSession): Long = fourGSessionDao.insert(session)
+    suspend fun update(session: FourGSession) = fourGSessionDao.update(session)
+    suspend fun getActiveSession(): FourGSession? = fourGSessionDao.getActiveSession()
+    suspend fun getSessionsInRange(start: Long, end: Long): List<FourGSession> = fourGSessionDao.getSessionsInRange(start, end)
+    suspend fun deleteOldSessions(timestamp: Long) = fourGSessionDao.deleteOldSessions(timestamp)
+    suspend fun closeAllSessions() = fourGSessionDao.closeAllSessions()
+}
+
 // --- User Preferences Storage (DataStore) ---
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
@@ -186,14 +232,17 @@ class UserPreferencesRepository(private val context: Context) {
         val NOTIFICATION_CONTENT_TYPE = stringPreferencesKey("notification_content_type")
         val DATA_DAILY_LIMIT_CONFIGURED = booleanPreferencesKey("data_daily_limit_configured")
         val DATA_MONTHLY_LIMIT_CONFIGURED = booleanPreferencesKey("data_monthly_limit_configured")
+        val FOUR_G_DAILY_LIMIT_CONFIGURED = booleanPreferencesKey("four_g_daily_limit_configured")
         val WIFI_DAILY_LIMIT_CONFIGURED = booleanPreferencesKey("wifi_daily_limit_configured")
         val WIFI_MONTHLY_LIMIT_CONFIGURED = booleanPreferencesKey("wifi_monthly_limit_configured")
 
         val DATA_DAILY_LIMIT_ENABLED = booleanPreferencesKey("data_daily_limit_enabled")
         val DATA_MONTHLY_LIMIT_ENABLED = booleanPreferencesKey("data_monthly_limit_enabled")
+        val FOUR_G_DAILY_LIMIT_ENABLED = booleanPreferencesKey("four_g_daily_limit_enabled")
         val WIFI_DAILY_LIMIT_ENABLED = booleanPreferencesKey("wifi_daily_limit_enabled")
         val WIFI_MONTHLY_LIMIT_ENABLED = booleanPreferencesKey("wifi_monthly_limit_enabled")
         val DATA_DAILY_LIMIT = longPreferencesKey("data_daily_limit")
+        val FOUR_G_DAILY_LIMIT = longPreferencesKey("four_g_daily_limit")
         val WIFI_DAILY_LIMIT = longPreferencesKey("wifi_daily_limit")
         val DATA_MONTHLY_LIMIT = longPreferencesKey("data_monthly_limit")
         val WIFI_MONTHLY_LIMIT = longPreferencesKey("wifi_monthly_limit")
@@ -233,21 +282,18 @@ class UserPreferencesRepository(private val context: Context) {
         val MONTHLY_RESET_DAY = intPreferencesKey("monthly_reset_day")
         val LANGUAGE = stringPreferencesKey("language")
 
-        val APP_LAUNCH_COUNT = intPreferencesKey("app_launch_count")
-        val FIRST_INSTALL_TIME = longPreferencesKey("first_install_time")
-        val LAST_REVIEW_PROMPT_TIME = longPreferencesKey("last_review_prompt_time")
-        val USER_REVIEWED_RATED = booleanPreferencesKey("user_reviewed_rated")
-
-        val WIDGET_SHOW_SPEED = booleanPreferencesKey("widget_show_speed")
-        val WIDGET_USAGE_TYPE = stringPreferencesKey("widget_usage_type") // "DAILY", "MONTHLY"
         val WIDGET_UPDATE_INTERVAL = intPreferencesKey("widget_update_interval")
-        val SUPPORT_BANNER_DISMISSED = booleanPreferencesKey("support_banner_dismissed")
         val CHECK_UPDATES_AUTOMATICALLY = booleanPreferencesKey("check_updates_automatically")
         val LAST_UPDATE_CHECK_TIME = longPreferencesKey("last_update_check_time")
         val IGNORED_UPDATE_VERSION = stringPreferencesKey("ignored_update_version")
         val SPEED_UNIT = stringPreferencesKey("speed_unit")
         val THEME_TRANSITION_KIND = stringPreferencesKey("theme_transition_kind")
         val SCREEN_TRANSITION_KIND = stringPreferencesKey("screen_transition_kind")
+        val SHOW_USAGE_FILTERS = booleanPreferencesKey("show_usage_filters")
+        val IS_FOUR_G_BLOCKED = booleanPreferencesKey("is_4g_blocked")
+        val IS_CELLULAR_BLOCKED = booleanPreferencesKey("is_cellular_blocked")
+        val IS_WIFI_BLOCKED = booleanPreferencesKey("is_wifi_blocked")
+        val IS_ON_4G = booleanPreferencesKey("is_on_4g")
     }
 
     private val preferencesFlow = context.dataStore.data
@@ -266,10 +312,6 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.ONBOARDING_COMPLETED] ?: false
         }.distinctUntilChanged()
 
-    val supportBannerDismissed: Flow<Boolean> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.SUPPORT_BANNER_DISMISSED] ?: false
-        }.distinctUntilChanged()
 
     val monitoringEnabled: Flow<Boolean> = preferencesFlow
         .map { preferences ->
@@ -326,6 +368,11 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.DATA_MONTHLY_LIMIT_CONFIGURED] ?: false
         }.distinctUntilChanged()
 
+    val fourGDailyLimitConfigured: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.FOUR_G_DAILY_LIMIT_CONFIGURED] ?: false
+        }.distinctUntilChanged()
+
     val wifiDailyLimitConfigured: Flow<Boolean> = preferencesFlow
         .map { preferences ->
             preferences[PreferencesKeys.WIFI_DAILY_LIMIT_CONFIGURED] ?: false
@@ -344,6 +391,11 @@ class UserPreferencesRepository(private val context: Context) {
     val dataMonthlyLimitEnabled: Flow<Boolean> = preferencesFlow
         .map { preferences ->
             preferences[PreferencesKeys.DATA_MONTHLY_LIMIT_ENABLED] ?: false
+        }.distinctUntilChanged()
+
+    val fourGDailyLimitEnabled: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.FOUR_G_DAILY_LIMIT_ENABLED] ?: false
         }.distinctUntilChanged()
 
     val wifiDailyLimitEnabled: Flow<Boolean> = preferencesFlow
@@ -379,6 +431,11 @@ class UserPreferencesRepository(private val context: Context) {
     val dataDailyLimit: Flow<Long> = preferencesFlow
         .map { preferences ->
             preferences[PreferencesKeys.DATA_DAILY_LIMIT] ?: 2_147_483_648L
+        }.distinctUntilChanged()
+
+    val fourGDailyLimit: Flow<Long> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.FOUR_G_DAILY_LIMIT] ?: 2_147_483_648L
         }.distinctUntilChanged()
 
     val wifiDailyLimit: Flow<Long> = preferencesFlow
@@ -536,35 +593,6 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.LANGUAGE] ?: ""
         }.distinctUntilChanged()
 
-    val appLaunchCount: Flow<Int> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.APP_LAUNCH_COUNT] ?: 0
-        }.distinctUntilChanged()
-
-    val firstInstallTime: Flow<Long> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.FIRST_INSTALL_TIME] ?: 0L
-        }.distinctUntilChanged()
-
-    val lastReviewPromptTime: Flow<Long> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.LAST_REVIEW_PROMPT_TIME] ?: 0L
-        }.distinctUntilChanged()
-
-    val userReviewedRated: Flow<Boolean> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.USER_REVIEWED_RATED] ?: false
-        }.distinctUntilChanged()
-
-    val widgetShowSpeed: Flow<Boolean> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.WIDGET_SHOW_SPEED] ?: true
-        }.distinctUntilChanged()
-
-    val widgetUsageType: Flow<String> = preferencesFlow
-        .map { preferences ->
-            preferences[PreferencesKeys.WIDGET_USAGE_TYPE] ?: "DAILY"
-        }.distinctUntilChanged()
 
     val widgetUpdateInterval: Flow<Int> = preferencesFlow
         .map { preferences ->
@@ -573,7 +601,7 @@ class UserPreferencesRepository(private val context: Context) {
 
     val checkUpdatesAutomatically: Flow<Boolean> = preferencesFlow
         .map { preferences ->
-            preferences[PreferencesKeys.CHECK_UPDATES_AUTOMATICALLY] ?: true
+            preferences[PreferencesKeys.CHECK_UPDATES_AUTOMATICALLY] ?: false
         }.distinctUntilChanged()
 
     val lastUpdateCheckTime: Flow<Long> = preferencesFlow
@@ -589,6 +617,31 @@ class UserPreferencesRepository(private val context: Context) {
     val speedUnit: Flow<String> = preferencesFlow
         .map { preferences ->
             preferences[PreferencesKeys.SPEED_UNIT] ?: "BYTES"
+        }.distinctUntilChanged()
+
+    val showUsageFilters: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.SHOW_USAGE_FILTERS] ?: false
+        }.distinctUntilChanged()
+
+    val isFourGBlocked: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.IS_FOUR_G_BLOCKED] ?: false
+        }.distinctUntilChanged()
+
+    val isCellularBlocked: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.IS_CELLULAR_BLOCKED] ?: false
+        }.distinctUntilChanged()
+
+    val isWifiBlocked: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.IS_WIFI_BLOCKED] ?: false
+        }.distinctUntilChanged()
+
+    val isOn4G: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[PreferencesKeys.IS_ON_4G] ?: false
         }.distinctUntilChanged()
 
     // --- Preferences Write Operations ---
@@ -669,6 +722,12 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun setFourGDailyLimitConfigured(configured: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.FOUR_G_DAILY_LIMIT_CONFIGURED] = configured
+        }
+    }
+
     suspend fun setWifiDailyLimitConfigured(configured: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.WIFI_DAILY_LIMIT_CONFIGURED] = configured
@@ -690,6 +749,12 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setDataMonthlyLimitEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.DATA_MONTHLY_LIMIT_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setFourGDailyLimitEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.FOUR_G_DAILY_LIMIT_ENABLED] = enabled
         }
     }
 
@@ -732,6 +797,12 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setDataDailyLimit(limitBytes: Long) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.DATA_DAILY_LIMIT] = limitBytes
+        }
+    }
+
+    suspend fun setFourGDailyLimit(limitBytes: Long) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.FOUR_G_DAILY_LIMIT] = limitBytes
         }
     }
 
@@ -881,45 +952,44 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun setShowUsageFilters(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SHOW_USAGE_FILTERS] = show
+        }
+    }
+
+    suspend fun setFourGBlocked(blocked: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_FOUR_G_BLOCKED] = blocked
+        }
+    }
+
+    suspend fun setCellularBlocked(blocked: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_CELLULAR_BLOCKED] = blocked
+        }
+    }
+
+    suspend fun setWifiBlocked(blocked: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_WIFI_BLOCKED] = blocked
+        }
+    }
+
+    suspend fun setOn4G(on4G: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_ON_4G] = on4G
+        }
+    }
+
     suspend fun setLanguage(languageCode: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.LANGUAGE] = languageCode
         }
     }
 
-    suspend fun incrementLaunchCount() {
-        context.dataStore.edit { preferences ->
-            val current = preferences[PreferencesKeys.APP_LAUNCH_COUNT] ?: 0
-            preferences[PreferencesKeys.APP_LAUNCH_COUNT] = current + 1
-            if (preferences[PreferencesKeys.FIRST_INSTALL_TIME] == null || preferences[PreferencesKeys.FIRST_INSTALL_TIME] == 0L) {
-                preferences[PreferencesKeys.FIRST_INSTALL_TIME] = System.currentTimeMillis()
-            }
-        }
-    }
 
-    suspend fun setUserReviewedRated(reviewed: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.USER_REVIEWED_RATED] = reviewed
-        }
-    }
 
-    suspend fun setLastReviewPromptTime(time: Long) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.LAST_REVIEW_PROMPT_TIME] = time
-        }
-    }
-
-    suspend fun setWidgetShowSpeed(show: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.WIDGET_SHOW_SPEED] = show
-        }
-    }
-
-    suspend fun setWidgetUsageType(type: String) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.WIDGET_USAGE_TYPE] = type
-        }
-    }
 
     suspend fun setWidgetUpdateInterval(intervalMinutes: Int) {
         context.dataStore.edit { preferences ->
@@ -927,11 +997,6 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun setSupportBannerDismissed(dismissed: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.SUPPORT_BANNER_DISMISSED] = dismissed
-        }
-    }
 
     suspend fun setCheckUpdatesAutomatically(enabled: Boolean) {
         context.dataStore.edit { preferences ->

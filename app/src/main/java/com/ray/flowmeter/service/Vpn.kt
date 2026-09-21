@@ -2,7 +2,6 @@ package com.ray.flowmeter.service
 
 import android.annotation.SuppressLint
 import android.content.Context
-import com.ray.flowmeter.R
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
@@ -11,21 +10,22 @@ import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import com.ray.flowmeter.R
 import com.ray.flowmeter.data.AppLimit
 import com.ray.flowmeter.data.AppLimitRepository
 import com.ray.flowmeter.data.FlowMeterDatabase
 import com.ray.flowmeter.data.UserPreferencesRepository
 import com.ray.flowmeter.utils.LocaleHelper
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
-import android.app.usage.NetworkStats
-import android.app.usage.NetworkStatsManager
-import java.util.Calendar
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 // VPN Service that intercepts and blocks network traffic for applications
 // that have exceeded their configured cellular or Wi-Fi data usage limits.
@@ -53,16 +53,20 @@ class AppBlockVpnService : VpnService() {
 
     private var collectionJob: Job? = null
     private val currentNetworkType = MutableStateFlow<Int?>(null)
+    private val isInternetAvailable = MutableStateFlow(false)
 
-    // Track active connection type changes (cellular vs Wi-Fi) to apply corresponding block rules.
+    // Track active connection type changes (cellular vs Wi-Fi) and internet availability.
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
             val type = when {
-                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkCapabilities.TRANSPORT_CELLULAR
                 capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> NetworkCapabilities.TRANSPORT_WIFI
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkCapabilities.TRANSPORT_CELLULAR
                 else -> null
             }
             type?.let { currentNetworkType.value = it }
+            
+            // Specifically monitor for actual internet availability to trigger instant firewall response.
+            isInternetAvailable.value = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         }
 
         override fun onLost(network: Network) {
@@ -71,13 +75,15 @@ class AppBlockVpnService : VpnService() {
             val capabilities = cm.getNetworkCapabilities(activeNetwork)
             if (capabilities == null) {
                 currentNetworkType.value = null
+                isInternetAvailable.value = false
             } else {
                 val type = when {
-                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkCapabilities.TRANSPORT_CELLULAR
                     capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> NetworkCapabilities.TRANSPORT_WIFI
+                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkCapabilities.TRANSPORT_CELLULAR
                     else -> null
                 }
                 currentNetworkType.value = type
+                isInternetAvailable.value = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             }
         }
     }
@@ -94,11 +100,12 @@ class AppBlockVpnService : VpnService() {
         val caps = connectivityManager.getNetworkCapabilities(activeNet)
         if (caps != null) {
             val type = when {
-                caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkCapabilities.TRANSPORT_CELLULAR
                 caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> NetworkCapabilities.TRANSPORT_WIFI
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkCapabilities.TRANSPORT_CELLULAR
                 else -> null
             }
             currentNetworkType.value = type
+            isInternetAvailable.value = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         }
 
         val request = NetworkRequest.Builder()
@@ -112,148 +119,38 @@ class AppBlockVpnService : VpnService() {
         val blockedApps: List<String>
     )
 
-    private suspend fun isSystemPlanLimitExceeded(networkType: Int?): Boolean {
-        if (networkType == null) return false
-        
-        val networkStatsManager = getSystemService(Context.NETWORK_STATS_SERVICE) as? NetworkStatsManager ?: return false
-        
-        val resetHour = userPrefs.resetTimeHour.first()
-        val resetMinute = userPrefs.resetTimeMinute.first()
-        val monthlyResetDay = userPrefs.monthlyResetDay.first()
-        
-        val currentTime = System.currentTimeMillis()
-        
-        fun getStartTime(period: String): Long {
-            val calendar = Calendar.getInstance()
-            calendar[Calendar.HOUR_OF_DAY] = resetHour
-            calendar[Calendar.MINUTE] = resetMinute
-            calendar[Calendar.SECOND] = 0
-            calendar[Calendar.MILLISECOND] = 0
-
-            val timeNow = System.currentTimeMillis()
-
-            if (period == "monthly") {
-                val maxDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
-                calendar[Calendar.DAY_OF_MONTH] = monthlyResetDay.coerceAtMost(maxDay)
-            }
-
-            var startTime = calendar.timeInMillis
-
-            if (timeNow < startTime) {
-                if (period == "monthly") {
-                    calendar.add(Calendar.MONTH, -1)
-                    val prevMaxDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
-                    calendar[Calendar.DAY_OF_MONTH] = monthlyResetDay.coerceAtMost(prevMaxDay)
-                } else {
-                    calendar.add(Calendar.DAY_OF_YEAR, -1)
-                }
-                startTime = calendar.timeInMillis
-            }
-            return startTime
-        }
-
-        fun getSumUsage(transportType: Int, period: String): Long {
-            var total = 0L
-            val start = getStartTime(period)
-            try {
-                val stats = networkStatsManager.querySummary(transportType, null, start, currentTime)
-                val bucket = NetworkStats.Bucket()
-                while (stats.hasNextBucket()) {
-                    stats.getNextBucket(bucket)
-                    total += bucket.rxBytes + bucket.txBytes
-                }
-                stats.close()
-            } catch (_: Exception) {}
-            return total
-        }
-
-        fun getCustomSumUsage(transportType: Int, start: Long, end: Long): Long {
-            var total = 0L
-            try {
-                val queryEnd = end.coerceAtMost(currentTime)
-                val queryStart = start.coerceAtMost(queryEnd)
-                val stats = networkStatsManager.querySummary(transportType, null, queryStart, queryEnd)
-                val bucket = NetworkStats.Bucket()
-                while (stats.hasNextBucket()) {
-                    stats.getNextBucket(bucket)
-                    total += bucket.rxBytes + bucket.txBytes
-                }
-                stats.close()
-            } catch (_: Exception) {}
-            return total
-        }
-
-        if (networkType == NetworkCapabilities.TRANSPORT_CELLULAR) {
-            val dailyEnabled = userPrefs.dataDailyLimitEnabled.first()
-            if (dailyEnabled) {
-                val limit = userPrefs.dataDailyLimit.first()
-                val usage = getSumUsage(NetworkCapabilities.TRANSPORT_CELLULAR, "daily")
-                if (usage >= limit) return true
-            }
-            
-            val monthlyEnabled = userPrefs.dataMonthlyLimitEnabled.first()
-            if (monthlyEnabled) {
-                val limit = userPrefs.dataMonthlyLimit.first()
-                val usage = getSumUsage(NetworkCapabilities.TRANSPORT_CELLULAR, "monthly")
-                if (usage >= limit) return true
-            }
-            
-            val customEnabled = userPrefs.dataCustomLimitEnabled.first()
-            if (customEnabled) {
-                val limit = userPrefs.dataCustomLimit.first()
-                val start = userPrefs.dataCustomLimitStart.first()
-                val end = userPrefs.dataCustomLimitEnd.first()
-                val usage = getCustomSumUsage(NetworkCapabilities.TRANSPORT_CELLULAR, start, end)
-                if (usage >= limit) return true
-            }
-        } else if (networkType == NetworkCapabilities.TRANSPORT_WIFI) {
-            val dailyEnabled = userPrefs.wifiDailyLimitEnabled.first()
-            if (dailyEnabled) {
-                val limit = userPrefs.wifiDailyLimit.first()
-                val usage = getSumUsage(NetworkCapabilities.TRANSPORT_WIFI, "daily")
-                if (usage >= limit) return true
-            }
-            
-            val monthlyEnabled = userPrefs.wifiMonthlyLimitEnabled.first()
-            if (monthlyEnabled) {
-                val limit = userPrefs.wifiMonthlyLimit.first()
-                val usage = getSumUsage(NetworkCapabilities.TRANSPORT_WIFI, "monthly")
-                if (usage >= limit) return true
-            }
-            
-            val customEnabled = userPrefs.wifiCustomLimitEnabled.first()
-            if (customEnabled) {
-                val limit = userPrefs.wifiCustomLimit.first()
-                val start = userPrefs.wifiCustomLimitStart.first()
-                val end = userPrefs.wifiCustomLimitEnd.first()
-                val usage = getCustomSumUsage(NetworkCapabilities.TRANSPORT_WIFI, start, end)
-                if (usage >= limit) return true
-            }
-        }
-        
-        return false
-    }
-
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         collectionJob?.cancel()
         
-        val tickerFlow = flow {
-            while (currentCoroutineContext().isActive) {
-                emit(System.currentTimeMillis())
-                delay(5000)
-            }
-        }
-
         collectionJob = serviceScope.launch {
+            @Suppress("UNCHECKED_CAST")
             combine(
                 repository.allAppLimits,
                 userPrefs.appBlockingMasterEnabled,
+                userPrefs.isFourGBlocked,
+                userPrefs.isCellularBlocked,
+                userPrefs.isWifiBlocked,
+                userPrefs.isOn4G,
                 currentNetworkType,
-                tickerFlow
-            ) { limits, masterEnabled, networkType, _ ->
-                if (!masterEnabled) null
+                isInternetAvailable
+            ) { args ->
+                val limits = args[0] as List<AppLimit>
+                val masterEnabled = args[1] as Boolean
+                val is4GBlocked = args[2] as Boolean
+                val isCellBlocked = args[3] as Boolean
+                val isWifiBlocked = args[4] as Boolean
+                val isOn4G = args[5] as Boolean
+                val networkType = args[6] as? Int
+                val hasInternet = args[7] as Boolean
+                
+                if (!masterEnabled || !hasInternet) null
                 else {
-                    val systemLimitExceeded = isSystemPlanLimitExceeded(networkType)
+                    val systemLimitExceeded = when (networkType) {
+                        NetworkCapabilities.TRANSPORT_CELLULAR -> isCellBlocked || is4GBlocked
+                        NetworkCapabilities.TRANSPORT_WIFI -> isWifiBlocked
+                        else -> false
+                    }
+
                     if (systemLimitExceeded) {
                         VpnBlockConfig(blockAll = true, blockedApps = emptyList())
                     } else {
@@ -261,25 +158,21 @@ class AppBlockVpnService : VpnService() {
                         val isMobile = networkType == NetworkCapabilities.TRANSPORT_CELLULAR
 
                         val blockedApps = limits.filter { limit ->
-                            if (!limit.isEnabled) return@filter false
+                            // Rules for immediate blocking without usage check:
+                            val isManual = limit.isManuallyBlocked
+                            
+                            val isZeroWifi = (limit.isWifiEnabled() && limit.wifiDataLimit == 0L && networkType == NetworkCapabilities.TRANSPORT_WIFI)
+                            val isZeroMobile = (limit.isMobileEnabled() && limit.mobileDataLimit == 0L && networkType == NetworkCapabilities.TRANSPORT_CELLULAR)
+                            val isZeroFourG = (limit.isFourGEnabled() && limit.dataLimit == 0L && networkType == NetworkCapabilities.TRANSPORT_CELLULAR && isOn4G)
 
-                            if (limit.isAlwaysBlocked) {
-                                return@filter when (limit.networkType) {
-                                    "wifi" -> isWifi
-                                    "mobile" -> isMobile
-                                    else -> isWifi || isMobile
-                                }
-                            }
+                            // Fallback to numeric limit exceeded (this part still uses the usage data updated by NetworkMonitoringService)
+                            val isExceeded = (
+                                (limit.isWifiEnabled() && limit.isWifiBlocked && networkType == NetworkCapabilities.TRANSPORT_WIFI) ||
+                                (limit.isMobileEnabled() && limit.isMobileBlocked && networkType == NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                                (limit.isFourGEnabled() && limit.isBlocked && networkType == NetworkCapabilities.TRANSPORT_CELLULAR && isOn4G)
+                            )
 
-                            when (limit.networkType) {
-                                "wifi" -> isWifi && (limit.isBlocked || limit.wifiDataLimit == 0L || limit.dataLimit == 0L)
-                                "mobile" -> isMobile && (limit.isBlocked || limit.mobileDataLimit == 0L || limit.dataLimit == 0L)
-                                "both" -> {
-                                    (isWifi && (limit.isWifiBlocked || limit.wifiDataLimit == 0L)) ||
-                                    (isMobile && (limit.isMobileBlocked || limit.mobileDataLimit == 0L))
-                                }
-                                else -> limit.isBlocked || limit.dataLimit == 0L
-                            }
+                            limit.isEnabled && (isManual || isZeroWifi || isZeroMobile || isZeroFourG || isExceeded)
                         }.map { it.packageName }.toList()
                         VpnBlockConfig(blockAll = false, blockedApps = blockedApps)
                     }

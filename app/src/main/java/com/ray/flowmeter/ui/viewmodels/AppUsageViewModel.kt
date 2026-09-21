@@ -1,6 +1,7 @@
 package com.ray.flowmeter.ui.viewmodels
 
 import android.app.usage.NetworkStats
+import com.ray.flowmeter.utils.NetworkStatsUtils
 import android.app.usage.NetworkStatsManager
 import android.content.Context
 import android.content.pm.ApplicationInfo
@@ -16,6 +17,8 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ray.flowmeter.R
+import com.ray.flowmeter.data.FlowMeterDatabase
+import com.ray.flowmeter.data.FourGSessionRepository
 import com.ray.flowmeter.data.UserPreferencesRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -44,6 +47,9 @@ data class AppUsageInfo(
     val wifiUp: Long,
     val cellDown: Long,
     val cellUp: Long,
+    val fourGUsage: Long = 0L,
+    val fourGDown: Long = 0L,
+    val fourGUp: Long = 0L,
     val isSystemGroup: Boolean = false,
 )
 
@@ -56,6 +62,10 @@ class AppUsageViewModel(
     private val _appUsageList = MutableStateFlow<List<AppUsageInfo>>(emptyList())
     private var monthlyResetDay = 1
 
+    private val fourGRepository: FourGSessionRepository by lazy {
+        FourGSessionRepository(FlowMeterDatabase.getDatabase(applicationContext).fourGSessionDao())
+    }
+
     private val _systemAppUsageList = MutableStateFlow<List<AppUsageInfo>>(emptyList())
 
     val timeFilter: StateFlow<String> = repository.usageTimeFilter
@@ -63,6 +73,9 @@ class AppUsageViewModel(
 
     val networkFilter: StateFlow<String> = repository.usageNetworkFilter
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "all")
+
+    val showFilters: StateFlow<Boolean> = repository.showUsageFilters
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val filteredAppUsageList: StateFlow<List<AppUsageInfo>> = combine(
         _appUsageList,
@@ -84,12 +97,14 @@ class AppUsageViewModel(
             when (filter) {
                 "mobile" -> app.cellUsage > 0
                 "wifi" -> app.wifiUsage > 0
+                "four_g" -> app.fourGUsage > 0
                 else -> true
             }
         }.sortedByDescending { app ->
             when (filter) {
                 "mobile" -> app.cellUsage
                 "wifi" -> app.wifiUsage
+                "four_g" -> app.fourGUsage
                 else -> app.totalUsage
             }
         }.toList()
@@ -101,6 +116,8 @@ class AppUsageViewModel(
     var globalWifiUp by mutableLongStateOf(0L)
     var globalCellDown by mutableLongStateOf(0L)
     var globalCellUp by mutableLongStateOf(0L)
+    var globalFourGDown by mutableLongStateOf(0L)
+    var globalFourGUp by mutableLongStateOf(0L)
 
     var isLoading by mutableStateOf(false)
     var isRefreshing by mutableStateOf(false)
@@ -117,9 +134,8 @@ class AppUsageViewModel(
                 repository.resetTimeHour,
                 repository.resetTimeMinute,
                 repository.usageTimeFilter,
-                repository.monthlyResetDay,
-                repository.language
-            ) { h, m, f, r, lang -> Triple(h, m, f) to r }.collect { (triple, resetDay) ->
+                repository.monthlyResetDay
+            ) { h, m, f, r-> Triple(h, m, f) to r }.collect { (triple, resetDay) ->
                 val (resetHour, resetMinute, savedTime) = triple
                 monthlyResetDay = resetDay
                 val start: Long
@@ -128,23 +144,9 @@ class AppUsageViewModel(
 
                 when (savedTime) {
                     "month" -> {
-                        val cal = Calendar.getInstance()
-                        val clampedDay = monthlyResetDay.coerceAtMost(cal.getActualMaximum(Calendar.DAY_OF_MONTH))
-                        cal.set(Calendar.DAY_OF_MONTH, clampedDay)
-                        cal.set(Calendar.HOUR_OF_DAY, resetHour)
-                        cal.set(Calendar.MINUTE, resetMinute)
-                        cal.set(Calendar.SECOND, 0)
-                        cal.set(Calendar.MILLISECOND, 0)
-                        
-                        if (now < cal.timeInMillis) {
-                            cal.add(Calendar.MONTH, -1)
-                            val prevMaxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-                            cal.set(Calendar.DAY_OF_MONTH, monthlyResetDay.coerceAtMost(prevMaxDay))
-                        }
-                        
-                        start = cal.timeInMillis
+                        start = NetworkStatsUtils.getStartTimeForPeriod("monthly", now, resetHour, resetMinute, monthlyResetDay)
                         end = now
-                        currentViewDate = (cal.clone() as Calendar)
+                        currentViewDate = Calendar.getInstance().apply { timeInMillis = start }
                         selectedDateString = ""
                     }
                     "custom" -> {
@@ -161,19 +163,9 @@ class AppUsageViewModel(
                         selectedDateString = formatRange(start, rawEnd)
                     }
                     else -> {
-                        val cal = Calendar.getInstance()
-                        cal.set(Calendar.HOUR_OF_DAY, resetHour)
-                        cal.set(Calendar.MINUTE, resetMinute)
-                        cal.set(Calendar.SECOND, 0)
-                        cal.set(Calendar.MILLISECOND, 0)
-                        
-                        if (now < cal.timeInMillis) {
-                            cal.add(Calendar.DAY_OF_YEAR, -1)
-                        }
-                        
-                        start = cal.timeInMillis
+                        start = NetworkStatsUtils.getStartTimeForPeriod("daily", now, resetHour, resetMinute, monthlyResetDay)
                         end = now
-                        currentViewDate = (cal.clone() as Calendar)
+                        currentViewDate = Calendar.getInstance().apply { timeInMillis = start }
                         selectedDateString = ""
                     }
                 }
@@ -200,6 +192,12 @@ class AppUsageViewModel(
     fun setNetworkFilter(filter: String) {
         viewModelScope.launch {
             repository.saveUsageNetworkFilter(filter)
+        }
+    }
+
+    fun setShowFilters(show: Boolean) {
+        viewModelScope.launch {
+            repository.setShowUsageFilters(show)
         }
     }
 
@@ -303,8 +301,8 @@ class AppUsageViewModel(
             }
 
             selectedDateString = if (
-                cal[Calendar.YEAR] == todayStart[Calendar.YEAR] &&
-                cal[Calendar.DAY_OF_YEAR] == todayStart[Calendar.DAY_OF_YEAR]
+                (cal[Calendar.YEAR] == todayStart[Calendar.YEAR]) &&
+                (cal[Calendar.DAY_OF_YEAR] == todayStart[Calendar.DAY_OF_YEAR])
             ) {
                 ""
             } else {
@@ -527,7 +525,7 @@ class AppUsageViewModel(
                 
                 val icon = synchronized(iconCache) {
                     iconCache.getOrPut(pkg) {
-                        packageManager.getApplicationIcon(appInfo).toBitmap(width = 96, height = 96).asImageBitmap()
+                        packageManager.getApplicationIcon(appInfo).toBitmap(120, 120).asImageBitmap()
                     }
                 }
 
@@ -549,16 +547,57 @@ class AppUsageViewModel(
         val wifiUpMap = mutableMapOf<Int, Long>()
         val cellDownMap = mutableMapOf<Int, Long>()
         val cellUpMap = mutableMapOf<Int, Long>()
+        val fourGDownMap = mutableMapOf<Int, Long>()
+        val fourGUpMap = mutableMapOf<Int, Long>()
+
+        var sumWifiDown = 0L
+        var sumWifiUp = 0L
+        var sumCellDown = 0L
+        var sumCellUp = 0L
+        var sumFourGDown = 0L
+        var sumFourGUp = 0L
 
         coroutineScope {
             val wifiJob = async {
+                val (rx, tx) = NetworkStatsUtils.getDeviceTotalUsagePair(networkStatsManager, NetworkCapabilities.TRANSPORT_WIFI, startTime, endTime)
+                sumWifiDown = rx
+                sumWifiUp = tx
                 queryDetailedUsage(networkStatsManager, NetworkCapabilities.TRANSPORT_WIFI, startTime, endTime, wifiDownMap, wifiUpMap)
             }
             val cellJob = async {
+                val (rx, tx) = NetworkStatsUtils.getDeviceTotalUsagePair(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, startTime, endTime)
+                sumCellDown = rx
+                sumCellUp = tx
                 queryDetailedUsage(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, startTime, endTime, cellDownMap, cellUpMap)
+            }
+            val fourGJob = async {
+                val sessions = fourGRepository.getSessionsInRange(startTime, endTime)
+                val now = System.currentTimeMillis()
+                for (session in sessions) {
+                    val s = maxOf(startTime, session.startTime)
+                    val e = if (session.closed) {
+                        minOf(endTime, session.endTime)
+                    } else {
+                        // For an open session, query until 'now' to match the notification
+                        minOf(endTime, now)
+                    }
+                    
+                    if (e > s) {
+                        if (session.closed && s == session.startTime && e == session.endTime) {
+                            sumFourGDown += session.usageBytesDown
+                            sumFourGUp += session.usageBytesUp
+                        } else {
+                            val (rx, tx) = NetworkStatsUtils.getDeviceTotalUsagePair(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, s, e)
+                            sumFourGDown += rx
+                            sumFourGUp += tx
+                        }
+                        queryDetailedUsage(networkStatsManager, NetworkCapabilities.TRANSPORT_CELLULAR, s, e, fourGDownMap, fourGUpMap)
+                    }
+                }
             }
             wifiJob.await()
             cellJob.await()
+            fourGJob.await()
         }
 
         val allUids = (wifiDownMap.keys + wifiUpMap.keys + cellDownMap.keys + cellUpMap.keys).toSet()
@@ -567,7 +606,7 @@ class AppUsageViewModel(
             val appInfo = packageManager.getApplicationInfo("android", 0)
             synchronized(iconCache) {
                 iconCache.getOrPut("android") {
-                    packageManager.getApplicationIcon(appInfo).toBitmap(width = 96, height = 96).asImageBitmap()
+                    packageManager.getApplicationIcon(appInfo).toBitmap(120, 120).asImageBitmap()
                 }
             }
         } catch (_: Exception) {
@@ -589,12 +628,15 @@ class AppUsageViewModel(
             val wifiUp = wifiUpMap[uid] ?: 0L
             val cellDown = cellDownMap[uid] ?: 0L
             val cellUp = cellUpMap[uid] ?: 0L
+            val fourGDown = fourGDownMap[uid] ?: 0L
+            val fourGUp = fourGUpMap[uid] ?: 0L
 
             val totalDownForApp = wifiDown + cellDown
             val totalUpForApp = wifiUp + cellUp
 
             val totalWifi = wifiDown + wifiUp
             val totalCell = cellDown + cellUp
+            val totalFourG = fourGDown + fourGUp
             val absoluteTotal = totalWifi + totalCell
 
             if (absoluteTotal > 0) {
@@ -613,6 +655,9 @@ class AppUsageViewModel(
                     wifiUp = wifiUp,
                     cellDown = cellDown,
                     cellUp = cellUp,
+                    fourGUsage = totalFourG,
+                    fourGDown = fourGDown,
+                    fourGUp = fourGUp,
                     isSystemGroup = false,
                 )
                 
@@ -630,6 +675,7 @@ class AppUsageViewModel(
 
         val finalSystemList = mutableListOf<AppUsageInfo>()
         finalSystemList.addAll(systemApps)
+        finalSystemList.addAll(systemProcesses)
 
         if (systemProcesses.isNotEmpty()) {
             val totalProcessUsage = systemProcesses.sumOf { it.totalUsage }
@@ -664,7 +710,7 @@ class AppUsageViewModel(
         if (totalSystemUsage > 0) {
             val systemIcon = try {
                 val appInfo = packageManager.getApplicationInfo("android", 0)
-                packageManager.getApplicationIcon(appInfo).toBitmap(width = 96, height = 96).asImageBitmap()
+                packageManager.getApplicationIcon(appInfo).toBitmap(120, 120).asImageBitmap()
             } catch (_: Exception) { null }
 
             val systemGroup = AppUsageInfo(
@@ -680,21 +726,21 @@ class AppUsageViewModel(
                 wifiUp = finalSystemList.sumOf { it.wifiUp },
                 cellDown = finalSystemList.sumOf { it.cellDown },
                 cellUp = finalSystemList.sumOf { it.cellUp },
+                fourGUsage = finalSystemList.sumOf { it.fourGUsage },
+                fourGDown = finalSystemList.sumOf { it.fourGDown },
+                fourGUp = finalSystemList.sumOf { it.fourGUp },
                 isSystemGroup = true,
             )
             userList.add(systemGroup)
         }
-
-        val sumWifiDown = wifiDownMap.values.sum()
-        val sumWifiUp = wifiUpMap.values.sum()
-        val sumCellDown = cellDownMap.values.sum()
-        val sumCellUp = cellUpMap.values.sum()
 
         withContext(Dispatchers.Main) {
             globalWifiDown = sumWifiDown
             globalWifiUp = sumWifiUp
             globalCellDown = sumCellDown
             globalCellUp = sumCellUp
+            globalFourGDown = sumFourGDown
+            globalFourGUp = sumFourGUp
         }
 
         return@withContext userList

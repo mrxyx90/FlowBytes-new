@@ -4,13 +4,32 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,42 +41,61 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.SignalCellularAlt
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.rounded.Update
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.Canvas
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ray.flowmeter.R
 import com.ray.flowmeter.data.UserPreferencesRepository
-import com.ray.flowmeter.receiver.DailyNetworkLimitWidget
-import com.ray.flowmeter.receiver.MonthlyNetworkLimitWidget
 import com.ray.flowmeter.receiver.CustomNetworkLimitWidget
+import com.ray.flowmeter.receiver.DailyNetworkLimitWidget
 import com.ray.flowmeter.receiver.DailyUsageWidget
+import com.ray.flowmeter.receiver.MonthlyNetworkLimitWidget
 import com.ray.flowmeter.receiver.MonthlyUsageWidget
 import com.ray.flowmeter.receiver.SpeedMonitorWidget
 import com.ray.flowmeter.receiver.TodayDataWidget
+import com.ray.flowmeter.ui.components.SettingsItem
+import com.ray.flowmeter.ui.theme.StaggeredEntrance
+import com.ray.flowmeter.ui.theme.bounceClick
 import com.ray.flowmeter.utils.SpeedFormatter
 import kotlinx.coroutines.launch
-import androidx.compose.material.icons.rounded.Update
-import androidx.compose.material.icons.rounded.Speed
-import androidx.compose.material.icons.rounded.DataUsage
-import com.ray.flowmeter.ui.components.SettingsItem
-import com.ray.flowmeter.ui.theme.bounceClick
-import com.ray.flowmeter.ui.theme.StaggeredEntrance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -701,61 +739,15 @@ fun WidgetBackgroundPreview(
     }
 }
 
-@Composable
-fun BadgePreview(
-    text: String,
-    icon: ImageVector,
-    tintColor: Color
-) {
-    Row(
-        modifier = Modifier
-            .background(
-                color = tintColor.copy(alpha = 0.08f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .border(
-                width = 1.dp,
-                color = tintColor.copy(alpha = 0.2f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = tintColor,
-            modifier = Modifier.size(12.dp)
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = tintColor
-        )
-    }
-}
 
-private fun triggerWidgetUpdate(context: Context) {
-    val intent = Intent(DailyUsageWidget.ACTION_UPDATE_WIDGET).apply {
-        setPackage(context.packageName)
-    }
-    context.sendBroadcast(intent)
-}
 
 private fun pinWidget(context: Context, providerClass: Class<out AppWidgetProvider>) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val appWidgetManager = context.getSystemService(AppWidgetManager::class.java)
-        val myProvider = ComponentName(context, providerClass)
-        if (appWidgetManager != null && appWidgetManager.isRequestPinAppWidgetSupported) {
-            appWidgetManager.requestPinAppWidget(myProvider, null, null)
-        } else {
-            Toast.makeText(context, context.getString(R.string.msg_widget_pin_failed), Toast.LENGTH_SHORT).show()
-        }
+    val appWidgetManager = context.getSystemService(AppWidgetManager::class.java)
+    val myProvider = ComponentName(context, providerClass)
+    if (appWidgetManager != null && appWidgetManager.isRequestPinAppWidgetSupported) {
+        appWidgetManager.requestPinAppWidget(myProvider, null, null)
     } else {
-        Toast.makeText(context, context.getString(R.string.msg_widget_pin_api_error), Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.msg_widget_pin_failed), Toast.LENGTH_SHORT).show()
     }
 }
 

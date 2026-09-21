@@ -6,37 +6,91 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Widgets
+import androidx.compose.material.icons.outlined.Assessment
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
+import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.serialization.Serializable
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
+import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.ui.NavDisplay
 import com.ray.flowmeter.R
 import com.ray.flowmeter.data.UserPreferencesRepository
 import com.ray.flowmeter.ui.screens.WidgetsScreen
@@ -53,17 +107,16 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigation3.runtime.NavEntry
 import com.ray.flowmeter.ui.dialogs.MuteAppDialog
-import androidx.compose.ui.platform.LocalContext
+import com.ray.flowmeter.ui.theme.StaggeredEntrance
 import com.ray.flowmeter.ui.viewmodels.AlertsViewModel
 import com.ray.flowmeter.ui.viewmodels.AppLimitsViewModel
 import com.ray.flowmeter.ui.viewmodels.AppUsageViewModel
 import com.ray.flowmeter.ui.viewmodels.HomeViewModel
 import com.ray.flowmeter.ui.viewmodels.SettingsViewModel
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
-import com.ray.flowmeter.ui.dialogs.DonateDialog
-import com.ray.flowmeter.utils.BillingEvent
+import kotlinx.coroutines.delay
+import kotlinx.serialization.Serializable
+import kotlin.time.Duration.Companion.milliseconds
+
 @Serializable
 sealed interface Destination {
     @Serializable
@@ -125,11 +178,11 @@ fun MainScreen(
 
     var activeLayoutDestination by remember { mutableStateOf(initialDestination) }
     LaunchedEffect(currentDestination) {
-        if (currentDestination == Destination.AppPicker || currentDestination == Destination.Widgets) {
-            delay(500)
-            activeLayoutDestination = currentDestination
+        activeLayoutDestination = if ((currentDestination == Destination.AppPicker) || (currentDestination == Destination.Widgets)) {
+            delay(500.milliseconds)
+            currentDestination
         } else {
-            activeLayoutDestination = currentDestination
+            currentDestination
         }
     }
 
@@ -144,75 +197,22 @@ fun MainScreen(
     }
 
     BackHandler(enabled = (currentDestination != Destination.Home)) {
-        if (currentDestination == Destination.AppPicker) {
-            appLimitsViewModel.isPickerOpen = false
-        } else if (currentDestination == Destination.Widgets) {
-            homeViewModel.isWidgetsOpen = false
-        } else {
-            backStack.clear()
-            backStack.add(Destination.Home)
+        when (currentDestination) {
+            Destination.AppPicker -> appLimitsViewModel.isPickerOpen = false
+            Destination.Widgets -> homeViewModel.isWidgetsOpen = false
+            else -> {
+                backStack.clear()
+                backStack.add(Destination.Home)
+            }
         }
     }
-
-    val snackbarHostState = remember { SnackbarHostState() }
-    val (limitsTab, setLimitsTab) = remember { mutableIntStateOf(0) }
-    var showUsageFilters by remember { mutableStateOf(false) }
-    var showAlertsFilters by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val repository = remember { UserPreferencesRepository(context.applicationContext) }
-    val locale = LocalConfiguration.current.locales[0]
-    var showDonateDialog by remember { mutableStateOf(false) }
-    var isDonationSuccess by remember { mutableStateOf(false) }
+    val showUsageFilters by appUsageViewModel.showFilters.collectAsState()
+    var showAlertsFilters by remember { mutableStateOf(value = false) }
 
-    LaunchedEffect(Unit) {
-        settingsViewModel.initBilling(context)
-    }
 
-    val donationCancelledMessage = stringResource(R.string.msg_donation_cancelled)
-    val donationFailedMessage = stringResource(R.string.msg_donation_failed)
-
-    LaunchedEffect(Unit) {
-        settingsViewModel.billingEvents.collect { event ->
-            when (event) {
-                is BillingEvent.Success -> {
-                    isDonationSuccess = true
-                    showDonateDialog = true
-                }
-                is BillingEvent.Cancelled -> {
-                    snackbarHostState.showSnackbar(donationCancelledMessage)
-                }
-                is BillingEvent.Error -> {
-                    snackbarHostState.showSnackbar(String.format(locale, donationFailedMessage, event.message))
-                }
-            }
-        }
-    }
-
-    // Milestone-based support prompt: show a snackbar after sufficient usage.
-    val supportBannerDismissed by settingsViewModel.supportBannerDismissed.collectAsState()
-    val appLaunchCount by settingsViewModel.appLaunchCount.collectAsState()
-    val firstInstallTime by settingsViewModel.firstInstallTime.collectAsState()
-    val supportPromptMessage = stringResource(R.string.snackbar_support_prompt)
-    val supportPromptAction = stringResource(R.string.snackbar_support_action)
-
-    LaunchedEffect(supportBannerDismissed, appLaunchCount, firstInstallTime) {
-        if (!supportBannerDismissed && appLaunchCount >= 5 && firstInstallTime > 0L) {
-            val threeDays = 3.days
-            if ((System.currentTimeMillis() - firstInstallTime).milliseconds >= threeDays) {
-                delay(3.seconds)
-                settingsViewModel.dismissSupportBanner()
-                val result = snackbarHostState.showSnackbar(
-                    message = supportPromptMessage,
-                    actionLabel = supportPromptAction,
-                    duration = SnackbarDuration.Long
-                )
-                if (result == SnackbarResult.ActionPerformed) {
-                    showDonateDialog = true
-                }
-            }
-        }
-    }
 
     // Update data when switching tabs
     LaunchedEffect(currentDestination) {
@@ -266,12 +266,12 @@ fun MainScreen(
                 val navRailAlpha by animateFloatAsState(
                     targetValue = if (currentDestination == Destination.AppPicker || currentDestination == Destination.Widgets) 0f else 1f,
                     animationSpec = tween(300),
-                    label = "NavRailAlpha"
+                    label = "NavRailAlpha",
                 )
 
                 NavigationRail(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    modifier = Modifier.graphicsLayer { alpha = navRailAlpha }
+                    modifier = Modifier.graphicsLayer { alpha = navRailAlpha },
                 ) {
                     Spacer(modifier = Modifier.weight(1f))
                     var railHomeCenter by remember { mutableStateOf(Offset.Zero) }
@@ -345,7 +345,6 @@ fun MainScreen(
 
             Scaffold(
                 modifier = Modifier.weight(1f),
-                snackbarHost = { SnackbarHost(snackbarHostState) },
                 topBar = {
                 val showGlobalTopBar = activeLayoutDestination != Destination.AppPicker && activeLayoutDestination != Destination.Widgets
                 if (showGlobalTopBar) {
@@ -429,7 +428,7 @@ fun MainScreen(
 
                                     if (activeLayoutDestination == Destination.Usage) {
                                         IconButton(
-                                            onClick = { showUsageFilters = !showUsageFilters },
+                                            onClick = { appUsageViewModel.setShowFilters(!showUsageFilters) },
                                             colors = IconButtonDefaults.iconButtonColors(
                                                 containerColor = Color.Transparent
                                             )
@@ -459,19 +458,39 @@ fun MainScreen(
 
                                     if (activeLayoutDestination == Destination.Limits) {
                                         val appBlockingMasterEnabled by appLimitsViewModel.appBlockingMasterEnabled.collectAsState()
-                                        val scope = rememberCoroutineScope()
-                                        val firewallEnabledMsg = stringResource(R.string.msg_firewall_enabled)
-                                        val firewallDisabledMsg = stringResource(R.string.msg_firewall_disabled)
                                         
+                                        // Blooming pulse animation for when firewall is OFF
+                                        val infiniteTransition = rememberInfiniteTransition(label = "FirewallPulse")
+                                        val pulseScale by infiniteTransition.animateFloat(
+                                            initialValue = 1.0f,
+                                            targetValue = 1.20f,
+                                            animationSpec = infiniteRepeatable(
+                                                animation = tween(1000, easing = EaseInOutCubic),
+                                                repeatMode = RepeatMode.Reverse
+                                            ),
+                                            label = "PulseScale"
+                                        )
+                                        val pulseAlpha by infiniteTransition.animateFloat(
+                                            initialValue = 0.25f,
+                                            targetValue = 0.45f,
+                                            animationSpec = infiniteRepeatable(
+                                                animation = tween(1000, easing = EaseInOutCubic),
+                                                repeatMode = RepeatMode.Reverse
+                                            ),
+                                            label = "PulseAlpha"
+                                        )
+
+                                        val firewallRed = Color(0xFFFF1111)
+
                                         val buttonBgColor by animateColorAsState(
                                             targetValue = if (appBlockingMasterEnabled) MaterialTheme.colorScheme.primaryContainer
-                                                          else Color.Transparent,
+                                                          else Color.Transparent, // Single layer drawn via drawBehind
                                             animationSpec = tween(300),
-                                            label = "FirewallBgColor"
+                                            label = "FirewallBackgroundColor"
                                         )
                                         val buttonContentColor by animateColorAsState(
                                             targetValue = if (appBlockingMasterEnabled) MaterialTheme.colorScheme.onPrimaryContainer
-                                                          else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                          else firewallRed,
                                             animationSpec = tween(300),
                                             label = "FirewallContentColor"
                                         )
@@ -480,18 +499,6 @@ fun MainScreen(
                                             onClick = {
                                                 val targetState = !appBlockingMasterEnabled
                                                 appLimitsViewModel.setAppBlockingMasterEnabled(targetState)
-                                                scope.launch {
-                                                    snackbarHostState.currentSnackbarData?.dismiss()
-                                                    val msg = if (targetState) firewallEnabledMsg else firewallDisabledMsg
-                                                    val job = launch {
-                                                        snackbarHostState.showSnackbar(
-                                                            message = msg,
-                                                            duration = SnackbarDuration.Indefinite
-                                                        )
-                                                    }
-                                                    delay(800.milliseconds)
-                                                    job.cancel()
-                                                }
                                             },
                                             colors = IconButtonDefaults.iconButtonColors(
                                                 containerColor = buttonBgColor,
@@ -499,6 +506,14 @@ fun MainScreen(
                                             ),
                                             modifier = Modifier
                                                 .size(40.dp)
+                                                .drawBehind {
+                                                    if (!appBlockingMasterEnabled) {
+                                                        drawCircle(
+                                                            color = firewallRed.copy(alpha = pulseAlpha),
+                                                            radius = (size.minDimension / 2) * pulseScale
+                                                        )
+                                                    }
+                                                }
                                                 .clip(CircleShape)
                                         ) {
                                             Crossfade(
@@ -509,7 +524,8 @@ fun MainScreen(
                                                 Icon(
                                                     imageVector = if (enabled) Icons.Rounded.Security else Icons.Rounded.Shield,
                                                     contentDescription = stringResource(R.string.label_block_apps),
-                                                    modifier = Modifier.size(20.dp)
+                                                    modifier = Modifier.size(20.dp),
+                                                    tint = buttonContentColor
                                                 )
                                             }
                                         }
@@ -768,8 +784,6 @@ fun MainScreen(
                         Destination.Limits -> NavEntry(key) {
                             AppLimitsScreen(
                                 viewModel = appLimitsViewModel,
-                                currentTab = limitsTab,
-                                onTabChange = setLimitsTab,
                                 modifier = Modifier.fillMaxSize().padding(lastStablePadding).nestedScroll(limitsScrollBehavior.nestedScrollConnection)
                             )
                         }
@@ -777,7 +791,6 @@ fun MainScreen(
                         Destination.Settings -> NavEntry(key) {
                             SettingsScreen(
                                 viewModel = settingsViewModel,
-                                onDonateClick = { showDonateDialog = true },
                                 onCheckForUpdates = onCheckForUpdates,
                                 modifier = Modifier.fillMaxSize().padding(lastStablePadding).nestedScroll(settingsScrollBehavior.nestedScrollConnection)
                             )
@@ -790,6 +803,10 @@ fun MainScreen(
                                     appLimitsViewModel.isPickerOpen = false
                                 }
                             ) { limits ->
+                                val isFirewallOn = appLimitsViewModel.appBlockingMasterEnabled.value
+                                if (!isFirewallOn) {
+                                    android.widget.Toast.makeText(context, "Firewall is off please enable", android.widget.Toast.LENGTH_SHORT).show()
+                                }
                                 appLimitsViewModel.addAppLimits(limits)
                                 appLimitsViewModel.isPickerOpen = false
                             }
@@ -814,18 +831,19 @@ fun MainScreen(
 
         val context = LocalContext.current
         val muteAppName = alertsViewModel.muteRequestAppName
-        if (muteAppName != null) {
+        muteAppName?.let {
             MuteAppDialog(
-                appName = muteAppName,
+                appName = it,
                 onDismiss = { alertsViewModel.clearMuteRequest() },
                 onConfirm = { durationMs ->
-                    alertsViewModel.muteApp(context, muteAppName, durationMs)
+                    alertsViewModel.muteApp(context, it, durationMs)
                 }
             )
         }
 
         val isViewingSystemApps = appUsageViewModel.isViewingSystemApps
         val filteredSystemAppList by appUsageViewModel.filteredSystemAppUsageList.collectAsState()
+        val networkFilter by appUsageViewModel.networkFilter.collectAsState()
         val systemListState = rememberLazyListState()
 
         AnimatedVisibility(
@@ -848,8 +866,14 @@ fun MainScreen(
                     topBar = {
                         TopAppBar(
                             title = {
+                                val filterTitle = when (networkFilter) {
+                                    "four_g" -> stringResource(R.string.filter_four_g_only)
+                                    "mobile" -> stringResource(R.string.filter_mobile_only)
+                                    "wifi" -> stringResource(R.string.filter_wifi_only)
+                                    else -> stringResource(R.string.title_system_data_usage)
+                                }
                                 Text(
-                                    text = stringResource(R.string.title_system_data_usage),
+                                    text = filterTitle,
                                     fontWeight = FontWeight.Black,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -871,12 +895,11 @@ fun MainScreen(
                         )
                     }
                 ) { padding ->
-                    val networkFilter by appUsageViewModel.networkFilter.collectAsState()
-
                     val maxUsageBytes = if (filteredSystemAppList.isNotEmpty()) {
                         filteredSystemAppList.maxOf {
                             when (networkFilter) {
                                 "mobile" -> it.cellUsage
+                                "four_g" -> it.fourGUsage
                                 "wifi" -> it.wifiUsage
                                 else -> it.totalUsage
                             }
@@ -915,6 +938,7 @@ fun MainScreen(
                             ) { _, appUsage ->
                                 val displayUsage = when (networkFilter) {
                                     "mobile" -> appUsage.cellUsage
+                                    "four_g" -> appUsage.fourGUsage
                                     "wifi" -> appUsage.wifiUsage
                                     else -> appUsage.totalUsage
                                 }
@@ -935,28 +959,6 @@ fun MainScreen(
         }
         }
 
-        if (showDonateDialog) {
-            DonateDialog(
-                isSuccess = isDonationSuccess,
-                onDismiss = {
-                    showDonateDialog = false
-                    isDonationSuccess = false
-                },
-            ) { amount ->
-                val activity = context.findActivity()
-                activity?.let {
-                    settingsViewModel.makeDonation(it, amount)
-                }
-            }
-        }
     }
 }
 
-private fun Context.findActivity(): Activity? {
-    var currentContext = this
-    while (currentContext is ContextWrapper) {
-        if (currentContext is Activity) return currentContext
-        currentContext = currentContext.baseContext
-    }
-    return null
-}

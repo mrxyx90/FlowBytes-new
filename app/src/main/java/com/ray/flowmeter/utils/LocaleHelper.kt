@@ -1,9 +1,10 @@
 // Locale manager utility providing context wrapping to dynamically switch language resources at runtime.
 package com.ray.flowmeter.utils
 
+import android.app.LocaleManager
 import android.content.Context
 import android.content.res.Configuration
-import android.content.res.Resources
+import android.os.LocaleList
 import java.util.Locale
 
 class LocaleContextWrapper(
@@ -17,31 +18,31 @@ class LocaleContextWrapper(
 
 object LocaleHelper {
     fun applyLocale(context: Context, languageCode: String): Context {
-        val originalContext = if (context is LocaleContextWrapper) context.baseContext else context
-
         val locale = if (languageCode.isEmpty()) {
-            val systemLocales = Resources.getSystem().configuration.locales
-            if (!systemLocales.isEmpty) systemLocales.get(0) else Locale.getDefault()
+            Locale.getDefault()
         } else {
             Locale.forLanguageTag(languageCode)
         }
 
         Locale.setDefault(locale)
 
-        val config = Configuration(originalContext.resources.configuration)
-        config.setLocale(locale)
-        config.setLayoutDirection(locale)
-
-        @Suppress("DEPRECATION")
-        originalContext.resources.updateConfiguration(config, originalContext.resources.displayMetrics)
-
-        val appContext = originalContext.applicationContext
-        if (appContext != null && appContext !== originalContext) {
-            @Suppress("DEPRECATION")
-            appContext.resources.updateConfiguration(config, appContext.resources.displayMetrics)
+        val localeManager = context.getSystemService(LocaleManager::class.java)
+        if (localeManager != null) {
+            val localeList = if (languageCode.isEmpty()) {
+                LocaleList.getEmptyLocaleList()
+            } else {
+                LocaleList(locale)
+            }
+            if (localeManager.applicationLocales != localeList) {
+                localeManager.applicationLocales = localeList
+            }
         }
 
-        val configContext = originalContext.createConfigurationContext(config)
-        return LocaleContextWrapper(configContext, originalContext)
+        val config = Configuration(context.resources.configuration)
+        config.setLocales(LocaleList(locale))
+        config.setLayoutDirection(locale)
+
+        val configContext = context.createConfigurationContext(config)
+        return LocaleContextWrapper(configContext, context)
     }
 }

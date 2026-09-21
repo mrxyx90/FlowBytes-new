@@ -1,19 +1,15 @@
 <resources>
-
-    <style name="Theme.FlowMeter" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <style name="Theme.FlowMeter" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
     </style>
 
-    <!-- Light Mode Splash Screen Theme -->
+    <!-- Starting theme for Splash Screen API -->
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
-        <!-- Background matches FlowBytes BackgroundLight (#FDFBFF) -->
-        <item name="windowSplashScreenBackground">#FDFBFF</item>
-        <!-- FlowBytes custom vector brand icon -->
+        <item name="windowSplashScreenBackground">@android:color/white</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <!-- Post splash theme -->
         <item name="postSplashScreenTheme">@style/Theme.FlowMeter</item>
     </style>
 </resources>
